@@ -1,0 +1,103 @@
+#
+# XAMPP settings - Optimized Template
+# Generated paths use {{XAMPP_ROOT_DIR}} placeholder
+#
+
+<IfModule env_module>
+    SetEnv MIBDIRS "{{XAMPP_ROOT_DIR}}/php/extras/mibs"
+    SetEnv MYSQL_HOME "{{XAMPP_ROOT_DIR}}/mysql/bin"
+    SetEnv OPENSSL_CONF "{{XAMPP_ROOT_DIR}}/apache/bin/openssl.cnf"
+    SetEnv PHP_PEAR_SYSCONF_DIR "{{XAMPP_ROOT_DIR}}/php"
+    SetEnv PHPRC "{{XAMPP_ROOT_DIR}}/php"
+    SetEnv TMP "{{XAMPP_ROOT_DIR}}/tmp"
+</IfModule>
+
+#
+# PHP-Module setup
+#
+LoadFile "{{XAMPP_ROOT_DIR}}/php/php8ts.dll"
+LoadFile "{{XAMPP_ROOT_DIR}}/php/libpq.dll"
+LoadFile "{{XAMPP_ROOT_DIR}}/php/libsqlite3.dll"
+LoadModule php_module "{{XAMPP_ROOT_DIR}}/php/php8apache2_4.dll"
+
+<FilesMatch "\.php$">
+    SetHandler application/x-httpd-php
+</FilesMatch>
+<FilesMatch "\.phps$">
+    SetHandler application/x-httpd-php-source
+</FilesMatch>
+
+<IfModule php_module>
+    PHPINIDir "{{XAMPP_ROOT_DIR}}/php"
+</IfModule>
+
+<IfModule mime_module>
+    AddType text/html .php .phps
+</IfModule>
+
+#
+# PHP-CGI (disabled by default)
+#
+ScriptAlias /php-cgi/ "{{XAMPP_ROOT_DIR}}/php/"
+<Directory "{{XAMPP_ROOT_DIR}}/php">
+    AllowOverride None
+    Options None
+    Require all denied
+    <Files "php-cgi.exe">
+        Require all granted
+    </Files>
+</Directory>
+
+<Directory "{{XAMPP_ROOT_DIR}}/cgi-bin">
+    <FilesMatch "\.php$">
+        SetHandler cgi-script
+    </FilesMatch>
+    <FilesMatch "\.phps$">
+        SetHandler None
+    </FilesMatch>
+</Directory>
+
+#
+# XAMPP Dashboard Security
+#
+<Directory "{{XAMPP_ROOT_DIR}}/htdocs/xampp">
+    AllowOverride AuthConfig
+    Require local
+    ErrorDocument 403 /error/XAMPP_FORBIDDEN.html.var
+</Directory>
+
+#
+# Aliases for XAMPP tools - LOCAL ACCESS ONLY
+#
+<IfModule alias_module>
+    # Licenses
+    Alias /licenses "{{XAMPP_ROOT_DIR}}/licenses/"
+    <Directory "{{XAMPP_ROOT_DIR}}/licenses">
+        Options +Indexes
+        Require local
+        ErrorDocument 403 /error/XAMPP_FORBIDDEN.html.var
+    </Directory>
+
+    # phpMyAdmin - Restrict to local only
+    Alias /phpmyadmin "{{XAMPP_ROOT_DIR}}/phpMyAdmin/"
+    <Directory "{{XAMPP_ROOT_DIR}}/phpMyAdmin">
+        AllowOverride AuthConfig
+        Require local
+        ErrorDocument 403 /error/XAMPP_FORBIDDEN.html.var
+    </Directory>
+
+    # Webalizer
+    Alias /webalizer "{{XAMPP_ROOT_DIR}}/webalizer/"
+    <Directory "{{XAMPP_ROOT_DIR}}/webalizer">
+        AllowOverride AuthConfig
+        Require local
+        ErrorDocument 403 /error/XAMPP_FORBIDDEN.html.var
+    </Directory>
+</IfModule>
+
+#
+# Security: Block sensitive XAMPP paths from all non-local requests
+#
+<LocationMatch "^/(xampp|phpmyadmin|webalizer|licenses)">
+    Require local
+</LocationMatch>

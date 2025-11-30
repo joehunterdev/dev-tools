@@ -1,0 +1,39 @@
+# Environment file with sensitive credentials
+.env
+.env.local
+.env.*.local
+
+# VHosts config (contains project names/domains)
+config/vhosts.json
+
+# Generated config files (contain secrets)
+config/optimized/dist/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE files
+.vscode/
+.idea/
+
+# Backup files created by optimizer
+optimizer/backups/
+
+# Backups folder (contains database dumps and configs)
+backups/
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+
+# NEVER commit environment files with secrets
+.env
+.env.local
+.env.production
+*.env
+.docs/**  

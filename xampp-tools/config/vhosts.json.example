@@ -1,0 +1,19 @@
+{
+  "vhosts": [
+    {
+      "name": "My Laravel API",
+      "folder": "my-api.dev",
+      "type": "laravel"
+    },
+    {
+      "name": "My React App",
+      "folder": "my-app.dev",
+      "type": "react"
+    },
+    {
+      "name": "WordPress Site",
+      "folder": "wp-site.dev",
+      "type": "wordpress"
+    }
+  ]
+}

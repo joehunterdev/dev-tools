@@ -1,0 +1,165 @@
+# VHost Template Blocks
+# These are the building blocks for generating httpd-vhosts.conf
+
+##############################################
+# LARAVEL - HTTP
+##############################################
+## App:Laravel HTTPS:false
+<VirtualHost *:{{PORT}}>
+    ServerName {{SERVER_NAME}}
+    DocumentRoot "{{DOCUMENT_ROOT}}/{{FOLDER}}/public"
+    <Directory "{{DOCUMENT_ROOT}}/{{FOLDER}}/public">
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    ErrorLog "{{DOCUMENT_ROOT}}/{{FOLDER}}/storage/logs/error.log"
+    CustomLog "{{DOCUMENT_ROOT}}/{{FOLDER}}/storage/logs/access.log" common
+</VirtualHost>
+
+##############################################
+# LARAVEL - HTTPS
+##############################################
+## App:Laravel HTTPS:true
+<VirtualHost *:{{SSL_PORT}}>
+    ServerName {{SERVER_NAME}}
+    DocumentRoot "{{DOCUMENT_ROOT}}/{{FOLDER}}/public"
+    <Directory "{{DOCUMENT_ROOT}}/{{FOLDER}}/public">
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    SSLEngine on
+    SSLCertificateFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.crt/server.crt"
+    SSLCertificateKeyFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.key/server.key"
+
+    ErrorLog "{{DOCUMENT_ROOT}}/{{FOLDER}}/storage/logs/error.log"
+    CustomLog "{{DOCUMENT_ROOT}}/{{FOLDER}}/storage/logs/access.log" common
+</VirtualHost>
+
+##############################################
+# REACT - HTTP
+##############################################
+## App:React HTTPS:false
+<VirtualHost *:{{PORT}}>
+    ServerName {{SERVER_NAME}}
+    DocumentRoot "{{DOCUMENT_ROOT}}/{{FOLDER}}"
+    <Directory "{{DOCUMENT_ROOT}}/{{FOLDER}}">
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+</VirtualHost>
+
+##############################################
+# REACT - HTTPS
+##############################################
+## App:React HTTPS:true
+<VirtualHost *:{{SSL_PORT}}>
+    ServerName {{SERVER_NAME}}
+    DocumentRoot "{{DOCUMENT_ROOT}}/{{FOLDER}}"
+    <Directory "{{DOCUMENT_ROOT}}/{{FOLDER}}">
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    SSLEngine on
+    SSLCertificateFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.crt/server.crt"
+    SSLCertificateKeyFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.key/server.key"
+</VirtualHost>
+
+##############################################
+# WORDPRESS - HTTP
+##############################################
+## App:WordPress HTTPS:false
+<VirtualHost *:{{PORT}}>
+    ServerName {{SERVER_NAME}}
+    DocumentRoot "{{DOCUMENT_ROOT}}/{{FOLDER}}"
+    <Directory "{{DOCUMENT_ROOT}}/{{FOLDER}}">
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    <IfModule mod_rewrite.c>
+        RewriteEngine On
+    </IfModule>
+
+    ErrorLog "logs/{{SERVER_NAME}}-error.log"
+    CustomLog "logs/{{SERVER_NAME}}-access.log" common
+</VirtualHost>
+
+##############################################
+# WORDPRESS - HTTPS
+##############################################
+## App:WordPress HTTPS:true
+<VirtualHost *:{{SSL_PORT}}>
+    ServerName {{SERVER_NAME}}
+    DocumentRoot "{{DOCUMENT_ROOT}}/{{FOLDER}}"
+    <Directory "{{DOCUMENT_ROOT}}/{{FOLDER}}">
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    <IfModule mod_rewrite.c>
+        RewriteEngine On
+    </IfModule>
+
+    SSLEngine on
+    SSLCertificateFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.crt/server.crt"
+    SSLCertificateKeyFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.key/server.key"
+
+    ErrorLog "logs/{{SERVER_NAME}}-error.log"
+    CustomLog "logs/{{SERVER_NAME}}-access.log" common
+</VirtualHost>
+
+##############################################
+# STATIC PHP - HTTP
+##############################################
+## App:Static HTTPS:false
+<VirtualHost *:{{PORT}}>
+    ServerName {{SERVER_NAME}}
+    DocumentRoot "{{DOCUMENT_ROOT}}/{{FOLDER}}"
+    <Directory "{{DOCUMENT_ROOT}}/{{FOLDER}}">
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+        DirectoryIndex index.php index.html
+    </Directory>
+
+    ErrorLog "logs/{{NAME}}-error.log"
+    CustomLog "logs/{{NAME}}-access.log" common
+</VirtualHost>
+
+##############################################
+# STATIC PHP - HTTPS
+##############################################
+## App:Static HTTPS:true
+<VirtualHost *:{{SSL_PORT}}>
+    ServerName {{SERVER_NAME}}
+    DocumentRoot "{{DOCUMENT_ROOT}}/{{FOLDER}}"
+    <Directory "{{DOCUMENT_ROOT}}/{{FOLDER}}">
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+        DirectoryIndex index.php index.html
+    </Directory>
+
+    SSLEngine on
+    SSLCertificateFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.crt/server.crt"
+    SSLCertificateKeyFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.key/server.key"
+
+    ErrorLog "logs/{{NAME}}-error.log"
+    CustomLog "logs/{{NAME}}-access.log" common
+</VirtualHost>
+
+##############################################
+# HTTP TO HTTPS REDIRECT
+##############################################
+## Redirect HTTP to HTTPS
+<VirtualHost *:{{PORT}}>
+    ServerName {{SERVER_NAME}}
+    Redirect permanent / https://{{SERVER_NAME}}/
+</VirtualHost>

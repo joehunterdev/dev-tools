@@ -1,0 +1,31 @@
+# Environment & Secrets
+.env
+*.local
+
+# Workspace file (contains local paths)
+*.code-workspace
+
+# Generated dist files (contain real values from .env)
+xampp-tools/config/optimized/dist/
+
+# User's vhosts config
+xampp-tools/config/vhosts.json
+
+# Backups (may contain sensitive configs)
+xampp-tools/backups/
+
+# Logs & temp
+*.log
+*.tmp
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Build output
+xampp-tools/config/optimized/dist/

@@ -1,0 +1,50 @@
+{
+  "description": "XAMPP Tools configuration - backups, templates, and deployment mappings",
+  
+  "backups": {
+    "description": "Config files to backup - paths relative to XAMPP_ROOT_DIR unless absolute",
+    "files": [
+      { "source": "apache\\conf\\httpd.conf", "target": "apache\\conf\\httpd.conf" },
+      { "source": "apache\\conf\\extra\\httpd-vhosts.conf", "target": "apache\\conf\\extra\\httpd-vhosts.conf" },
+      { "source": "apache\\conf\\extra\\httpd-xampp.conf", "target": "apache\\conf\\extra\\httpd-xampp.conf" },
+      { "source": "php\\php.ini", "target": "php\\php.ini" },
+      { "source": "mysql\\bin\\my.ini", "target": "mysql\\my.ini" },
+      { "source": "phpMyAdmin\\config.inc.php", "target": "phpMyAdmin\\config.inc.php" },
+      { "source": "C:\\Windows\\System32\\drivers\\etc\\hosts", "target": "hosts\\hosts", "absolute": true }
+    ]
+  },
+
+  "templates": {
+    "description": "Templates to compile - template path relative to templates dir, output relative to dist dir",
+    "sourceDir": "config\\optimized\\templates",
+    "distDir": "config\\optimized\\dist",
+    "files": [
+      { "template": "apache\\conf\\httpd.conf.template", "output": "apache\\conf\\httpd.conf" },
+      { "template": "apache\\conf\\extra\\httpd-xampp.conf.template", "output": "apache\\conf\\extra\\httpd-xampp.conf" },
+      { "template": "php\\php.ini.template", "output": "php\\php.ini" },
+      { "template": "mysql\\my.ini.template", "output": "mysql\\my.ini" },
+      { "template": "phpMyAdmin\\config.inc.php.template", "output": "phpMyAdmin\\config.inc.php" },
+      { "template": "hosts\\hosts.template", "output": "hosts\\hosts", "type": "hosts" }
+    ]
+  },
+
+  "vhosts": {
+    "description": "VHosts configuration - sites to generate and template blocks",
+    "blocksTemplate": "apache\\conf\\extra\\vhost-blocks.template",
+    "output": "apache\\conf\\extra\\httpd-vhosts.conf",
+    "hostsOutput": "hosts\\hosts",
+    "sitesFile": "config\\vhosts.json"
+  },
+
+  "deployMappings": {
+    "description": "Maps dist output paths to XAMPP target paths (relative to XAMPP_ROOT_DIR)",
+    "mappings": {
+      "apache\\conf\\httpd.conf": "apache\\conf\\httpd.conf",
+      "apache\\conf\\extra\\httpd-xampp.conf": "apache\\conf\\extra\\httpd-xampp.conf",
+      "apache\\conf\\extra\\httpd-vhosts.conf": "apache\\conf\\extra\\httpd-vhosts.conf",
+      "php\\php.ini": "php\\php.ini",
+      "mysql\\my.ini": "mysql\\bin\\my.ini",
+      "phpMyAdmin\\config.inc.php": "phpMyAdmin\\config.inc.php"
+    }
+  }
+}
