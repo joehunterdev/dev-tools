@@ -2,8 +2,9 @@
 .env
 *.local
 
-# Workspace file (contains local paths)
-*.code-workspace
+# Workspace files (allow root workspace, ignore others)
+!dev-tools.code-workspace
+xampp-tools/*.code-workspace
 
 # Generated dist files (contain real values from .env)
 xampp-tools/config/optimized/dist/

@@ -1,0 +1,48 @@
+{
+	"folders": [
+		{
+			"name": "🛠️ Dev-tools",
+			"path": "."
+		},
+		{
+			"name": "🌐 Hosts File",
+			"path": "../../Windows/System32/drivers/etc"
+		},
+		{
+			"name": "⚙️ Apache VHosts",
+			"path": "../../xampp/apache/conf/extra"
+		},
+ 		{
+			"name": "💾 MySQL Data",
+			"path": "../../xampp/mysql/data"
+		},
+		{
+			"name": "🐘 phpMyAdmin",
+			"path": "../../xampp/phpMyAdmin"
+		},
+		{
+			"name": "🗄️ MySQL Bin",
+			"path": "../../xampp/mysql/bin"
+		},
+		{
+			"name": "🐘 PHP",
+			"path": "../../xampp/php"
+		},
+		{
+			"name": "⚙️ Apache Conf",
+			"path": "../../xampp/apache/conf"
+		}
+	],
+	"settings": {
+		"workbench.startupEditor": "none",
+		"files.associations": {
+			"*.template": "ini",
+			"hosts": "plaintext"
+		},
+		"powershell.codeFormatting.preset": "OTBS"
+	},
+	"launch": {
+		"configurations": [],
+		"compounds": []
+	}
+}
