@@ -24,7 +24,7 @@ Built by [Joe Hunter](https://github.com/joehunterdev) • [joe.hunter.dev@gmail
 - 🔄 **Service Control** - Start/stop Apache and MySQL with one command
 - 📋 **Hosts File Manager** - Auto-update Windows hosts file for local domains
 - ⚡ **Modular Design** - Drop-in PowerShell modules, auto-discovered menu
-
+- Change mysql password 
 ---
 
 ## 💻 Requirements

@@ -39,7 +39,10 @@
 			"*.template": "ini",
 			"hosts": "plaintext"
 		},
-		"powershell.codeFormatting.preset": "OTBS"
+		"powershell.codeFormatting.preset": "OTBS",
+		"files.exclude": {
+			"../../**": true
+		}
 	},
 	"launch": {
 		"configurations": [],

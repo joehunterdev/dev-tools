@@ -1,5 +1,113 @@
 # VHost Template Blocks
 # These are the building blocks for generating httpd-vhosts.conf
+# Built: {{TIMESTAMP}}
+
+##############################################
+# DEFAULT CATCH-ALL - HTTP (Basic)
+##############################################
+## App:Default HTTPS:false
+<VirtualHost *:{{PORT}}>
+    ServerName localhost
+    DocumentRoot "{{DOCUMENT_ROOT}}"
+    <Directory "{{DOCUMENT_ROOT}}">
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+        DirectoryIndex index.php index.html index.htm
+    </Directory>
+    
+    ErrorLog "logs/default-error.log"
+    CustomLog "logs/default-access.log" common
+</VirtualHost>
+
+##############################################
+# SECURE CATCH-ALL - HTTP (Optimized/Secure)
+##############################################
+## App:Default-Secure HTTPS:false
+<VirtualHost *:{{PORT}}>
+    ServerName localhost
+    DocumentRoot "{{DOCUMENT_ROOT}}"
+
+    <Directory "{{DOCUMENT_ROOT}}">
+        # Allow directory browsing and index files
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+        DirectoryIndex index.php index.html index.htm
+
+        # --------------------------
+        # SECURITY - Block sensitive files
+        # --------------------------
+        <FilesMatch "\.(env|gitignore|lock|md|yml|yaml|sql|bak|tmp|log)$">
+            Require all denied
+        </FilesMatch>
+
+        <FilesMatch "^(config|\.git|\.env)$">
+            Require all denied
+        </FilesMatch>
+
+        <FilesMatch "^(composer\.json|composer\.lock|package\.json|package-lock\.json)$">
+            Require all denied
+        </FilesMatch>
+
+        # Optional: Block dotfiles and hidden folders
+        <FilesMatch "^[_\.]">
+            Require all denied
+        </FilesMatch>
+    </Directory>
+
+    # --------------------------
+    # Prevent script execution in uploads (optional)
+    # --------------------------
+    <Directory "{{DOCUMENT_ROOT}}/uploads">
+        Options Indexes
+        AllowOverride None
+        Require all granted
+        php_admin_flag engine off
+        # Force PHP files to text/plain
+        AddType text/plain .php .phtml .php3 .php4 .php5 .php6 .phps .pht .phar
+    </Directory>
+
+    # --------------------------
+    # PERFORMANCE - Caching & Compression
+    # --------------------------
+    <IfModule mod_expires.c>
+        ExpiresActive On
+        ExpiresByType image/jpeg "access plus 1 month"
+        ExpiresByType image/png "access plus 1 month"
+        ExpiresByType image/gif "access plus 1 month"
+        ExpiresByType image/webp "access plus 1 month"
+        ExpiresByType image/svg+xml "access plus 1 month"
+        ExpiresByType text/css "access plus 1 year"
+        ExpiresByType application/javascript "access plus 1 year"
+        ExpiresByType text/javascript "access plus 1 year"
+        ExpiresByType font/ttf "access plus 1 month"
+        ExpiresByType font/otf "access plus 1 month"
+        ExpiresByType font/woff "access plus 1 month"
+        ExpiresByType font/woff2 "access plus 1 month"
+        ExpiresByType text/html "access plus 1 hour"
+        ExpiresDefault "access plus 2 weeks"
+    </IfModule>
+
+    <IfModule mod_deflate.c>
+        AddOutputFilterByType DEFLATE text/html text/plain text/css text/javascript application/javascript application/json text/xml application/xml application/xml+rss
+    </IfModule>
+
+    <IfModule mod_headers.c>
+        Header unset ETag
+        FileETag None
+        # Optional security headers (uncomment if needed)
+        # Header set X-Frame-Options "DENY"
+        # Header set X-Content-Type-Options "nosniff"
+        # Header set X-XSS-Protection "1; mode=block"
+    </IfModule>
+
+    # --------------------------
+    # Logs
+    # --------------------------
+    ErrorLog "logs/default-error.log"
+    CustomLog "logs/default-access.log" combined
+</VirtualHost>
 
 ##############################################
 # LARAVEL - HTTP
@@ -129,8 +237,8 @@
         DirectoryIndex index.php index.html
     </Directory>
 
-    ErrorLog "logs/{{NAME}}-error.log"
-    CustomLog "logs/{{NAME}}-access.log" common
+    ErrorLog "logs/{{FOLDER}}-error.log"
+    CustomLog "logs/{{FOLDER}}-access.log" common
 </VirtualHost>
 
 ##############################################
@@ -151,8 +259,8 @@
     SSLCertificateFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.crt/server.crt"
     SSLCertificateKeyFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.key/server.key"
 
-    ErrorLog "logs/{{NAME}}-error.log"
-    CustomLog "logs/{{NAME}}-access.log" common
+    ErrorLog "logs/{{FOLDER}}-error.log"
+    CustomLog "logs/{{FOLDER}}-access.log" common
 </VirtualHost>
 
 ##############################################

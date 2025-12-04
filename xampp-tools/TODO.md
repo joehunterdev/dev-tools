@@ -1,0 +1,11 @@
+## Todos
+ - Create alias shortcuts environment variables
+ - Recreate mysql passwords
+ - Create phpinfo and link to
+ - [x] Vhosts fix port 8080 always defaults to laravel installation what about root
+ - [] Root secure htaccess
+ - [] Setup windows backup event 
+ - [] Configure sendmail
+ - [] Clear temp
+ - [] Malware scan
+ - [] Open with vscode

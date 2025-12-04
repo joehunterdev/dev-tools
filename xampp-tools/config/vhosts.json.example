@@ -1,6 +1,12 @@
 {
   "vhosts": [
     {
+      "name": "root",
+      "serverName": "localhost",
+      "folder": ".",
+      "type": "default"
+    },
+    {
       "name": "My Laravel API",
       "folder": "my-api.dev",
       "type": "laravel"

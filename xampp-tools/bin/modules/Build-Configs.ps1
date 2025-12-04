@@ -17,6 +17,10 @@
     Deploy separately with 'deploy-configs' or 'deploy-vhosts'
 #>
 
+param(
+    [string]$CatchAllType = ""  # "Default" (basic) or "Default-Secure" (secure) - if empty, user will be prompted
+)
+
 # Get paths
 $moduleRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 . (Join-Path $moduleRoot "bin\Common.ps1")
@@ -36,6 +40,16 @@ if (-not $script:Config) {
 $script:TemplatesDir = Join-Path $moduleRoot $script:Config.templates.sourceDir
 $script:DistDir = Join-Path $moduleRoot $script:Config.templates.distDir
 $script:VhostsFile = Join-Path $moduleRoot $script:Config.vhosts.sitesFile
+
+# Initialize default catch-all type (can be overridden by user prompt or parameter)
+if ($CatchAllType -eq "Default-Secure" -or $CatchAllType -eq "Secure") {
+    $script:DefaultCatchAllType = "Default-Secure"
+} elseif ($CatchAllType -eq "Default" -or $CatchAllType -eq "Basic") {
+    $script:DefaultCatchAllType = "Default"
+} else {
+    # Default to Secure if not specified
+    $script:DefaultCatchAllType = "Default-Secure"
+}
 
 # ============================================================
 # FUNCTIONS
@@ -60,7 +74,24 @@ function Build-ConfigFromTemplate {
         # Replace all {{VAR_NAME}} with env values
         foreach ($key in $EnvVars.Keys) {
             $placeholder = "{{$key}}"
-            $content = $content -replace [regex]::Escape($placeholder), $EnvVars[$key]
+            $value = $EnvVars[$key]
+            
+            # Strip outer quotes if present (for values wrapped in quotes in .env)
+            # This applies to all _PASSWORD, _SECRET, and similar sensitive keys
+            if (($value.StartsWith("'") -and $value.EndsWith("'")) -or 
+                ($value.StartsWith('"') -and $value.EndsWith('"'))) {
+                $value = $value.Substring(1, $value.Length - 2)
+            }
+            
+            # For PHP config files, escape special characters
+            # Especially important for _PASSWORD and _SECRET keys with special chars
+            if ($TemplatePath -like "*.php*") {
+                # Escape backslashes first, then single quotes
+                $value = $value -replace '\\', '\\'
+                $value = $value -replace "'", "\\'"
+            }
+            
+            $content = $content -replace [regex]::Escape($placeholder), $value
         }
         
         # Special handling for hosts template - inject vhosts entries
@@ -192,6 +223,37 @@ function Build-VhostsConfig {
         $docRoot = if ($EnvVars['XAMPP_DOCUMENT_ROOT']) { $EnvVars['XAMPP_DOCUMENT_ROOT'] } else { "C:\www" }
         $xamppRoot = if ($EnvVars['XAMPP_ROOT_DIR']) { $EnvVars['XAMPP_ROOT_DIR'] } else { "C:\xampp" }
         $domainExt = if ($EnvVars['VHOSTS_EXTENSION']) { $EnvVars['VHOSTS_EXTENSION'] } else { ".local" }
+        
+        # Always add default localhost catch-all first
+        $output += "# Default (localhost)"
+        $defaultBlock = Get-VhostBlock -BlocksContent $blocksContent -AppType $script:DefaultCatchAllType -Https $false
+        if ($defaultBlock) {
+            $defaultBlock = $defaultBlock -replace "{{PORT}}", $port
+            $defaultBlock = $defaultBlock -replace "{{SSL_PORT}}", $sslPort
+            $defaultBlock = $defaultBlock -replace "{{SERVER_NAME}}", "localhost"
+            $defaultBlock = $defaultBlock -replace "{{FOLDER}}", "."
+            $defaultBlock = $defaultBlock -replace "{{NAME}}", "Default (localhost)"
+            $defaultBlock = $defaultBlock -replace "{{DOCUMENT_ROOT}}", $docRoot
+            $defaultBlock = $defaultBlock -replace "{{XAMPP_ROOT_DIR}}", $xamppRoot
+            
+            $output += $defaultBlock
+            $output += ""
+        } else {
+            # Fallback if template block not found
+            $output += "<VirtualHost *:$port>"
+            $output += "    ServerName localhost"
+            $output += "    DocumentRoot `"$docRoot`""
+            $output += "    <Directory `"$docRoot`">"
+            $output += "        Options Indexes FollowSymLinks"
+            $output += "        AllowOverride All"
+            $output += "        Require all granted"
+            $output += "        DirectoryIndex index.php index.html index.htm"
+            $output += "    </Directory>"
+            $output += "    ErrorLog `"logs/default-error.log`""
+            $output += "    CustomLog `"logs/default-access.log`" common"
+            $output += "</VirtualHost>"
+            $output += ""
+        }
         
         foreach ($site in $ValidSites) {
             $appType = switch ($site.type.ToLower()) {
@@ -367,6 +429,22 @@ if ($canBuildVhosts) {
 }
 Write-Host ""
 
+# Ask for default catch-all type (only if not provided via parameter)
+if (-not $CatchAllType) {
+    Write-Host "  🌐 Default Catch-All Configuration:" -ForegroundColor White
+    Write-Host ""
+    Write-Host "    1. Basic (simple, minimal security)" -ForegroundColor Gray
+    Write-Host "    2. Secure (with file blocking & upload protection)" -ForegroundColor Gray
+    Write-Host ""
+    $catchAllChoice = Read-Host "  Choose default catch-all type (1 or 2)"
+    $script:DefaultCatchAllType = if ($catchAllChoice -eq "2") { "Default-Secure" } else { "Default" }
+} else {
+    Write-Host "  🌐 Default Catch-All Configuration:" -ForegroundColor White
+    Write-Host ""
+}
+Write-Host "    ✅ Using: $script:DefaultCatchAllType" -ForegroundColor Green
+Write-Host ""
+
 if (-not (Prompt-YesNo "  Build all configs to dist/?")) {
     Write-Host ""
     Write-Host "  Cancelled." -ForegroundColor Yellow
@@ -376,6 +454,9 @@ if (-not (Prompt-YesNo "  Build all configs to dist/?")) {
 Write-Host ""
 Write-Host "  Building..." -ForegroundColor Cyan
 Write-Host ""
+
+# Add timestamp to env vars so all templates know when they were built
+$envData["TIMESTAMP"] = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 
 # Build base templates
 $built = 0
@@ -434,6 +515,6 @@ if ($failed -gt 0) {
 
 Write-Host ""
 Write-Host "  Next steps:" -ForegroundColor DarkGray
-Write-Host "    • Run 'deploy-configs' to deploy base configs to XAMPP" -ForegroundColor DarkGray
-Write-Host "    • Run 'deploy-vhosts' to deploy vhosts + hosts" -ForegroundColor DarkGray
+Write-Host "    - Run 'deploy-configs' to deploy base configs to XAMPP" -ForegroundColor DarkGray
+Write-Host "    - Run 'deploy-vhosts' to deploy vhosts + hosts" -ForegroundColor DarkGray
 Write-Host ""

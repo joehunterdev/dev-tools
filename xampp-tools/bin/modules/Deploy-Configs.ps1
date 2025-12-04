@@ -66,7 +66,12 @@ Write-Host ""
 $filesToDeploy = @()
 foreach ($mapping in $script:Config.deployMappings.mappings.PSObject.Properties) {
     $sourcePath = Join-Path $script:DistDir $mapping.Name
-    $targetPath = Join-Path $xamppRoot $mapping.Value
+    $targetPath = $mapping.Value
+    
+    # Substitute environment variables in target path
+    foreach ($key in $envData.Keys) {
+        $targetPath = $targetPath -replace [regex]::Escape("{{$key}}"), $envData[$key]
+    }
     
     # Skip vhosts - deployed separately
     if ($mapping.Name -match "httpd-vhosts\.conf$") {
@@ -74,11 +79,19 @@ foreach ($mapping in $script:Config.deployMappings.mappings.PSObject.Properties)
     }
     
     if (Test-Path $sourcePath) {
+        # Make target path absolute if it's relative to XAMPP_ROOT_DIR
+        $absoluteTarget = $targetPath
+        if (-not [System.IO.Path]::IsPathRooted($absoluteTarget)) {
+            $absoluteTarget = Join-Path $xamppRoot $absoluteTarget
+        }
+        
         $filesToDeploy += @{
             Source = $sourcePath
-            Target = $targetPath
+            Target = $absoluteTarget
             Name = $mapping.Name
         }
+    } else {
+        Write-Host "  ⚠️  Skipping (not found): $($mapping.Name) at $sourcePath" -ForegroundColor Yellow
     }
 }
 

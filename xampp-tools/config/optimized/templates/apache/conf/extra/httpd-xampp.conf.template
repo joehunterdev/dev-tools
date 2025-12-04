@@ -1,6 +1,7 @@
 #
 # XAMPP settings - Optimized Template
 # Generated paths use {{XAMPP_ROOT_DIR}} placeholder
+# Built: {{TIMESTAMP}}
 #
 
 <IfModule env_module>

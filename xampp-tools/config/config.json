@@ -24,7 +24,9 @@
       { "template": "php\\php.ini.template", "output": "php\\php.ini" },
       { "template": "mysql\\my.ini.template", "output": "mysql\\my.ini" },
       { "template": "phpMyAdmin\\config.inc.php.template", "output": "phpMyAdmin\\config.inc.php" },
-      { "template": "hosts\\hosts.template", "output": "hosts\\hosts", "type": "hosts" }
+      { "template": "hosts\\hosts.template", "output": "hosts\\hosts", "type": "hosts" },
+      { "template": "root\\index.php", "output": "root\\index.php" },
+      { "template": "root\\phpinfo.php", "output": "root\\phpinfo.php" }
     ]
   },
 
@@ -44,7 +46,9 @@
       "apache\\conf\\extra\\httpd-vhosts.conf": "apache\\conf\\extra\\httpd-vhosts.conf",
       "php\\php.ini": "php\\php.ini",
       "mysql\\my.ini": "mysql\\bin\\my.ini",
-      "phpMyAdmin\\config.inc.php": "phpMyAdmin\\config.inc.php"
+      "phpMyAdmin\\config.inc.php": "phpMyAdmin\\config.inc.php",
+      "root\\index.php": "{{XAMPP_DOCUMENT_ROOT}}\\index.php",
+      "root\\phpinfo.php": "{{XAMPP_DOCUMENT_ROOT}}\\phpinfo.php"
     }
   }
 }

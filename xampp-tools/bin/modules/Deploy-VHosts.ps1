@@ -118,6 +118,44 @@ function Build-VhostsConfig {
         $output += "# Generated: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
         $output += ""
         
+        # Always add default localhost catch-all
+        $output += "# Default (localhost)"
+        $defaultBlock = Get-VhostBlock -BlocksContent $blocksContent -AppType "Default" -Https $false
+        if ($defaultBlock) {
+            $port = if ($EnvVars['XAMPP_SERVER_PORT']) { $EnvVars['XAMPP_SERVER_PORT'] } else { "80" }
+            $sslPort = if ($EnvVars['XAMPP_SSL_PORT']) { $EnvVars['XAMPP_SSL_PORT'] } else { "443" }
+            $docRoot = if ($EnvVars['XAMPP_DOCUMENT_ROOT']) { $EnvVars['XAMPP_DOCUMENT_ROOT'] } else { "C:\www" }
+            $xamppRoot = if ($EnvVars['XAMPP_ROOT_DIR']) { $EnvVars['XAMPP_ROOT_DIR'] } else { "C:\xampp" }
+            
+            $defaultBlock = $defaultBlock -replace "{{PORT}}", $port
+            $defaultBlock = $defaultBlock -replace "{{SSL_PORT}}", $sslPort
+            $defaultBlock = $defaultBlock -replace "{{SERVER_NAME}}", "localhost"
+            $defaultBlock = $defaultBlock -replace "{{FOLDER}}", "."
+            $defaultBlock = $defaultBlock -replace "{{NAME}}", "Default (localhost)"
+            $defaultBlock = $defaultBlock -replace "{{DOCUMENT_ROOT}}", $docRoot
+            $defaultBlock = $defaultBlock -replace "{{XAMPP_ROOT_DIR}}", $xamppRoot
+            
+            $output += $defaultBlock
+            $output += ""
+        } else {
+            # Fallback if template block not found
+            $port = if ($EnvVars['XAMPP_SERVER_PORT']) { $EnvVars['XAMPP_SERVER_PORT'] } else { "80" }
+            $docRoot = if ($EnvVars['XAMPP_DOCUMENT_ROOT']) { $EnvVars['XAMPP_DOCUMENT_ROOT'] } else { "C:\www" }
+            $output += "<VirtualHost *:$port>"
+            $output += "    ServerName localhost"
+            $output += "    DocumentRoot `"$docRoot`""
+            $output += "    <Directory `"$docRoot`">"
+            $output += "        Options Indexes FollowSymLinks"
+            $output += "        AllowOverride All"
+            $output += "        Require all granted"
+            $output += "        DirectoryIndex index.php index.html index.htm"
+            $output += "    </Directory>"
+            $output += "    ErrorLog `"logs/default-error.log`""
+            $output += "    CustomLog `"logs/default-access.log`" common"
+            $output += "</VirtualHost>"
+            $output += ""
+        }
+        
         $port = if ($EnvVars['XAMPP_SERVER_PORT']) { $EnvVars['XAMPP_SERVER_PORT'] } else { "80" }
         $sslPort = if ($EnvVars['XAMPP_SSL_PORT']) { $EnvVars['XAMPP_SSL_PORT'] } else { "443" }
         $docRoot = if ($EnvVars['XAMPP_DOCUMENT_ROOT']) { $EnvVars['XAMPP_DOCUMENT_ROOT'] } else { "C:\www" }
@@ -126,6 +164,7 @@ function Build-VhostsConfig {
         
         foreach ($site in $ValidSites) {
             $appType = switch ($site.type.ToLower()) {
+                "default" { "Default" }
                 "laravel" { "Laravel" }
                 "react" { "React" }
                 "wordpress" { "WordPress" }
@@ -294,6 +333,10 @@ function Deploy-HostsFile {
 # MAIN
 # ============================================================
 
+param(
+    [switch]$Force
+)
+
 Show-Header
 
 Write-Host ""
@@ -405,7 +448,7 @@ Write-Host "    • httpd-vhosts.conf -> $xamppRoot\apache\conf\extra\" -Foregro
 Write-Host "    • hosts -> C:\Windows\System32\drivers\etc\" -ForegroundColor Gray
 Write-Host ""
 
-if (-not (Prompt-YesNo "  Deploy to XAMPP? (requires admin for hosts)")) {
+if (-not $Force -and -not (Prompt-YesNo "  Deploy to XAMPP? (requires admin for hosts)")) {
     Write-Host ""
     Write-Host "  Skipped deployment. Configs are in dist/" -ForegroundColor Yellow
     exit
