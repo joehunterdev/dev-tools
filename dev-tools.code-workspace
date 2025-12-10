@@ -31,7 +31,13 @@
 		{
 			"name": "⚙️ Apache Conf",
 			"path": "../../xampp/apache/conf"
+			
 		}
+		{
+			"name": "🔐 Software Policy",
+			"path": "../../Windows/SoftwarePolicy"
+		}
+		
 	],
 	"settings": {
 		"workbench.startupEditor": "none",
