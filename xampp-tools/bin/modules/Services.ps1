@@ -24,7 +24,6 @@ function Show-ServiceStatus {
 $envVars = Load-EnvFile $script:EnvFile
 $xamppRoot = if ($envVars['XAMPP_ROOT_DIR']) { $envVars['XAMPP_ROOT_DIR'] } else { "C:\xampp" }
 $apacheExe = Join-Path $xamppRoot "apache\bin\httpd.exe"
-$mysqlExe = Join-Path $xamppRoot "mysql\bin\mysqld.exe"
 
 Show-Header
 Write-Host "  🔄 Service Manager" -ForegroundColor Yellow
@@ -48,9 +47,10 @@ switch ($choice) {
         if (Test-Path $apacheExe) { 
             & $apacheExe -k start 2>&1 | Out-Null
         }
-        # Start MySQL
-        if (Test-Path $mysqlExe) {
-            & $mysqlExe --datadir="$xamppRoot\mysql\data" 2>&1 | Out-Null &
+        # Start MySQL using batch script
+        $mysqlStart = Join-Path $xamppRoot "mysql_start.bat"
+        if (Test-Path $mysqlStart) {
+            & cmd /c $mysqlStart 2>&1 | Out-Null &
         }
         Start-Sleep -Seconds 3
         Show-ServiceStatus
@@ -84,9 +84,10 @@ switch ($choice) {
         if (Test-Path $apacheExe) { 
             & $apacheExe -k start 2>&1 | Out-Null
         }
-        # Start MySQL
-        if (Test-Path $mysqlExe) {
-            & $mysqlExe --datadir="$xamppRoot\mysql\data" 2>&1 | Out-Null &
+        # Start MySQL using batch script
+        $mysqlStart = Join-Path $xamppRoot "mysql_start.bat"
+        if (Test-Path $mysqlStart) {
+            & cmd /c $mysqlStart 2>&1 | Out-Null &
         }
         Start-Sleep -Seconds 3
         Show-ServiceStatus
