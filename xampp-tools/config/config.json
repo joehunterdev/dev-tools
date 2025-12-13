@@ -11,7 +11,8 @@
       { "source": "mysql\\bin\\my.ini", "target": "mysql\\my.ini" },
       { "source": "phpMyAdmin\\config.inc.php", "target": "phpMyAdmin\\config.inc.php" },
       { "source": "C:\\Windows\\System32\\drivers\\etc\\hosts", "target": "hosts\\hosts", "absolute": true },
-      { "source": "C:\\Windows\\SoftwarePolicy\\softwarepolicy.ini", "target": "softwarepolicy\\softwarepolicy.ini", "absolute": true }
+      { "source": "C:\\Windows\\SoftwarePolicy\\softwarepolicy.ini", "target": "softwarepolicy\\softwarepolicy.ini", "absolute": true },
+      { "source": "xampp-control.ini", "target": "xampp-control.ini" }
     ]
   },
 
@@ -27,7 +28,8 @@
       { "template": "phpMyAdmin\\config.inc.php.template", "output": "phpMyAdmin\\config.inc.php" },
       { "template": "hosts\\hosts.template", "output": "hosts\\hosts", "type": "hosts" },
       { "template": "root\\index.php", "output": "root\\index.php" },
-      { "template": "root\\info.php", "output": "root\\info.php" }
+      { "template": "root\\info.php", "output": "root\\info.php" },
+      { "template": "xampp\\xampp-control.ini.template", "output": "xampp\\xampp-control.ini" }
     ]
   },
 
@@ -50,7 +52,8 @@
       "phpMyAdmin\\config.inc.php": "phpMyAdmin\\config.inc.php",
       "root\\index.php": "{{XAMPP_DOCUMENT_ROOT}}\\index.php",
       "root\\info.php": "{{XAMPP_DOCUMENT_ROOT}}\\info.php",
-      "hosts\\hosts": "C:\\Windows\\System32\\drivers\\etc\\hosts"
+      "hosts\\hosts": "C:\\Windows\\System32\\drivers\\etc\\hosts",
+      "xampp\\xampp-control.ini": "xampp-control.ini"
     }
   }
 }
