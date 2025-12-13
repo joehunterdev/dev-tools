@@ -9,6 +9,9 @@ config/vhosts.json
 # Generated config files (contain secrets)
 config/optimized/dist/
 
+# Generated command aliases
+bin/aliases/
+
 # OS files
 .DS_Store
 Thumbs.db

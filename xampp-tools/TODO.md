@@ -9,3 +9,8 @@
  - [] Clear temp
  - [] Malware scan
  - [] Open with vscode
+ - [] Center Xampp App Dashboard
+ - [] Software Restriction Policy Fixes
+ - [] Quick create db
+ - [] Quick create addd aditonal vhosts config
+ - [] restart xampp using its app path

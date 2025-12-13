@@ -1,9 +1,9 @@
 [PHP]
-; Min Template built: {{TIMESTAMP}}
+; Max Template built: {{TIMESTAMP}}
 
 ;;;;;;;;;;;;;;;;;;;
 ; About php.ini   ;
-;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;.
 
 ; This is the php.ini-development INI file.
 
@@ -440,7 +440,9 @@ default_socket_timeout=60
 ;
 ;   extension=/path/to/extension/mysqli.so
 
+extension=bcmath
 extension=bz2
+extension=ctype
 
 ; The ldap extension must be before curl if OpenSSL 1.0.2 and OpenLDAP is used
 ; otherwise it results in segfault when unloading after using SASL.
@@ -456,13 +458,15 @@ extension=gettext
 ;extension=gmp
 ;extension=intl
 ;extension=imap
+extension=json
 extension=mbstring
 extension=exif      ; Must be after mbstring as it depends on it
 extension=mysqli
 ;extension=oci8_12c  ; Use with Oracle Database 12c Instant Client
 ;extension=oci8_19  ; Use with Oracle Database 19 Instant Client
 ;extension=odbc
-;extension=openssl
+extension=openssl
+extension=pdo
 ;extension=pdo_firebird
 extension=pdo_mysql
 ;extension=pdo_oci
@@ -481,7 +485,9 @@ extension=pdo_sqlite
 ;extension=sodium
 ;extension=sqlite3
 ;extension=tidy
+extension=tokenizer
 ;extension=xsl
+extension=xml
 extension=zip
 
 zend_extension=opcache

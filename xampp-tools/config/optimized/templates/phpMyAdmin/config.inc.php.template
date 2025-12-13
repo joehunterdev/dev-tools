@@ -10,14 +10,14 @@
  * SECURITY SETTINGS
  * ==================== */
 
-// Blowfish secret for cookie encryption (32+ chars)
+// Blowfish secret for cookie encryption (must be exactly 32 bytes/characters)
 $cfg['blowfish_secret'] = '{{PMA_BLOWFISH_SECRET}}';
 
 // Force HTTPS in production (set to true if using SSL)
 $cfg['ForceSSL'] = false;
 
 // Session security
-$cfg['LoginCookieValidity'] = 3600;        // 1 hour session timeout
+$cfg['LoginCookieValidity'] = 3600;        // 1 hour (matches session.gc_maxlifetime)
 $cfg['LoginCookieStore'] = 0;              // Don't remember login
 $cfg['LoginCookieDeleteAll'] = true;       // Logout clears all cookies
 

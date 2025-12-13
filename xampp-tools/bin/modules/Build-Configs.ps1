@@ -1,6 +1,5 @@
 # Name: Build Configs
 # Description: Build all configs from templates
-# Icon: 📦
 # Cmd: build-configs
 # Order: 5
 
@@ -9,17 +8,11 @@
     Build Configs - Compile all templates to dist/
 
 .DESCRIPTION
-    Builds ALL configs to dist/:
+    Builds base configs to dist/:
     1. Base configs (httpd.conf, php.ini, etc.) from templates
     2. VHosts (httpd-vhosts.conf) from vhosts.json
     3. Hosts file from vhosts.json server names
-    
-    Deploy separately with 'deploy-configs' or 'deploy-vhosts'
 #>
-
-param(
-    [string]$CatchAllType = ""  # "Default" (basic) or "Default-Secure" (secure) - if empty, user will be prompted
-)
 
 # Get paths
 $moduleRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
@@ -40,16 +33,6 @@ if (-not $script:Config) {
 $script:TemplatesDir = Join-Path $moduleRoot $script:Config.templates.sourceDir
 $script:DistDir = Join-Path $moduleRoot $script:Config.templates.distDir
 $script:VhostsFile = Join-Path $moduleRoot $script:Config.vhosts.sitesFile
-
-# Initialize default catch-all type (can be overridden by user prompt or parameter)
-if ($CatchAllType -eq "Default-Secure" -or $CatchAllType -eq "Secure") {
-    $script:DefaultCatchAllType = "Default-Secure"
-} elseif ($CatchAllType -eq "Default" -or $CatchAllType -eq "Basic") {
-    $script:DefaultCatchAllType = "Default"
-} else {
-    # Default to Secure if not specified
-    $script:DefaultCatchAllType = "Default-Secure"
-}
 
 # ============================================================
 # FUNCTIONS
@@ -74,25 +57,11 @@ function Build-ConfigFromTemplate {
         # Replace all {{VAR_NAME}} with env values
         foreach ($key in $EnvVars.Keys) {
             $placeholder = "{{$key}}"
-            $value = $EnvVars[$key]
-            
-            # Strip outer quotes if present (for values wrapped in quotes in .env)
-            # This applies to all _PASSWORD, _SECRET, and similar sensitive keys
-            if (($value.StartsWith("'") -and $value.EndsWith("'")) -or 
-                ($value.StartsWith('"') -and $value.EndsWith('"'))) {
-                $value = $value.Substring(1, $value.Length - 2)
-            }
-            
-            # For PHP config files, escape special characters
-            # Especially important for _PASSWORD and _SECRET keys with special chars
-            if ($TemplatePath -like "*.php*") {
-                # Escape backslashes first, then single quotes
-                $value = $value -replace '\\', '\\'
-                $value = $value -replace "'", "\\'"
-            }
-            
-            $content = $content -replace [regex]::Escape($placeholder), $value
+            $content = $content -replace [regex]::Escape($placeholder), $EnvVars[$key]
         }
+        
+        # Replace runtime placeholders
+        $content = $content -replace [regex]::Escape("{{TIMESTAMP}}"), (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
         
         # Special handling for hosts template - inject vhosts entries
         if ($Type -eq "hosts") {
@@ -195,10 +164,61 @@ function Test-SiteFolder {
     }
 }
 
+function Remove-MissingLogDirectives {
+    param(
+        [string]$Block,
+        [string]$DocumentRoot,
+        [string]$Folder,
+        [string]$AppType
+    )
+    
+    # Determine the expected log directory based on app type
+    $logDir = switch ($AppType.ToLower()) {
+        "laravel" { "$DocumentRoot/$Folder/storage/logs" }
+        "react" { "$DocumentRoot/$Folder/storage/logs" }
+        "wordpress" { "$DocumentRoot/$Folder/logs" }
+        "static" { "$DocumentRoot/$Folder/logs" }
+        default { "$DocumentRoot/$Folder/logs" }
+    }
+    
+    # Convert to Windows path for testing
+    $logDirTest = $logDir -replace "/", "\"
+    
+    # If log directory does NOT exist, remove the conditional markers and log lines
+    if (-not (Test-Path $logDirTest)) {
+        # Remove lines that contain {{#IF_LOG_DIR}}, {{/IF_LOG_DIR}}, ErrorLog, and CustomLog
+        $lines = $Block -split "`n"
+        $filteredLines = @()
+        $inLogBlock = $false
+        
+        foreach ($line in $lines) {
+            if ($line -match '\{\{#IF_LOG_DIR\}\}') {
+                $inLogBlock = $true
+            } elseif ($line -match '\{\{/IF_LOG_DIR\}\}') {
+                $inLogBlock = $false
+            } elseif ($inLogBlock) {
+                # Skip lines inside log block
+                continue
+            } else {
+                $filteredLines += $line
+            }
+        }
+        
+        $Block = $filteredLines -join "`n"
+    } else {
+        # Log directory exists, just remove the conditional markers
+        $Block = $Block -replace '\{\{#IF_LOG_DIR\}\}', ''
+        $Block = $Block -replace '\{\{/IF_LOG_DIR\}\}', ''
+    }
+    
+    return $Block
+}
+
 function Build-VhostsConfig {
     param(
         [hashtable]$EnvVars,
-        [array]$ValidSites
+        [array]$ValidSites,
+        [string]$DefaultCatchAllType = "Default"
     )
     
     $blocksTemplatePath = Join-Path $script:TemplatesDir $script:Config.vhosts.blocksTemplate
@@ -224,9 +244,9 @@ function Build-VhostsConfig {
         $xamppRoot = if ($EnvVars['XAMPP_ROOT_DIR']) { $EnvVars['XAMPP_ROOT_DIR'] } else { "C:\xampp" }
         $domainExt = if ($EnvVars['VHOSTS_EXTENSION']) { $EnvVars['VHOSTS_EXTENSION'] } else { ".local" }
         
-        # Always add default localhost catch-all first
-        $output += "# Default (localhost)"
-        $defaultBlock = Get-VhostBlock -BlocksContent $blocksContent -AppType $script:DefaultCatchAllType -Https $false
+        # Add default localhost catch-all from template
+        $output += "# Default (localhost) - Fallback for unmatched requests"
+        $defaultBlock = Get-VhostBlock -BlocksContent $blocksContent -AppType "Default" -Https $false
         if ($defaultBlock) {
             $defaultBlock = $defaultBlock -replace "{{PORT}}", $port
             $defaultBlock = $defaultBlock -replace "{{SSL_PORT}}", $sslPort
@@ -236,22 +256,35 @@ function Build-VhostsConfig {
             $defaultBlock = $defaultBlock -replace "{{DOCUMENT_ROOT}}", $docRoot
             $defaultBlock = $defaultBlock -replace "{{XAMPP_ROOT_DIR}}", $xamppRoot
             
+            # Check if logs directory exists for default catch-all
+            $logDirTest = "$docRoot\logs"
+            if (-not (Test-Path $logDirTest)) {
+                # Log directory doesn't exist, remove the conditional markers and log lines
+                $lines = $defaultBlock -split "`n"
+                $filteredLines = @()
+                $inLogBlock = $false
+                
+                foreach ($line in $lines) {
+                    if ($line -match '\{\{#IF_LOG_DIR\}\}') {
+                        $inLogBlock = $true
+                    } elseif ($line -match '\{\{/IF_LOG_DIR\}\}') {
+                        $inLogBlock = $false
+                    } elseif ($inLogBlock) {
+                        # Skip lines inside log block
+                        continue
+                    } else {
+                        $filteredLines += $line
+                    }
+                }
+                
+                $defaultBlock = $filteredLines -join "`n"
+            } else {
+                # Log directory exists, just remove the conditional markers
+                $defaultBlock = $defaultBlock -replace '\{\{#IF_LOG_DIR\}\}', ''
+                $defaultBlock = $defaultBlock -replace '\{\{/IF_LOG_DIR\}\}', ''
+            }
+            
             $output += $defaultBlock
-            $output += ""
-        } else {
-            # Fallback if template block not found
-            $output += "<VirtualHost *:$port>"
-            $output += "    ServerName localhost"
-            $output += "    DocumentRoot `"$docRoot`""
-            $output += "    <Directory `"$docRoot`">"
-            $output += "        Options Indexes FollowSymLinks"
-            $output += "        AllowOverride All"
-            $output += "        Require all granted"
-            $output += "        DirectoryIndex index.php index.html index.htm"
-            $output += "    </Directory>"
-            $output += "    ErrorLog `"logs/default-error.log`""
-            $output += "    CustomLog `"logs/default-access.log`" common"
-            $output += "</VirtualHost>"
             $output += ""
         }
         
@@ -264,7 +297,9 @@ function Build-VhostsConfig {
                 default { "Static" }
             }
             
-            $https = if ($site.https) { $true } else { $false }
+            # Check for SSL - support both 'ssl' and 'https' properties
+            # Handle various truthy values from JSON
+            $sslEnabled = ($site.ssl -eq $true) -or ($site.ssl -eq "true") -or ($site.https -eq $true) -or ($site.https -eq "true")
             
             # Generate server name: use serverName if specified, otherwise folder.domainExt
             if ($site.serverName) {
@@ -275,20 +310,57 @@ function Build-VhostsConfig {
                 $serverName = "$baseName$domainExt"
             }
             
-            $block = Get-VhostBlock -BlocksContent $blocksContent -AppType $appType -Https $https
-            
-            if ($block) {
-                $block = $block -replace "{{PORT}}", $port
-                $block = $block -replace "{{SSL_PORT}}", $sslPort
-                $block = $block -replace "{{SERVER_NAME}}", $serverName
-                $block = $block -replace "{{FOLDER}}", $site.folder
-                $block = $block -replace "{{NAME}}", $site.name
-                $block = $block -replace "{{DOCUMENT_ROOT}}", $docRoot
-                $block = $block -replace "{{XAMPP_ROOT_DIR}}", $xamppRoot
-                
-                $output += "# $($site.name)"
-                $output += $block
+            if ($sslEnabled) {
+                # SSL enabled: Generate HTTP redirect + HTTPS block
+                $redirectBlock = @"
+<VirtualHost *:$port>
+    ServerName $serverName
+    Redirect permanent / https://$serverName/
+</VirtualHost>
+"@
+                $output += "# $($site.name) - HTTP to HTTPS Redirect"
+                $output += $redirectBlock
                 $output += ""
+                
+                # Get HTTPS block
+                $block = Get-VhostBlock -BlocksContent $blocksContent -AppType $appType -Https $true
+                
+                if ($block) {
+                    $block = $block -replace "{{PORT}}", $port
+                    $block = $block -replace "{{SSL_PORT}}", $sslPort
+                    $block = $block -replace "{{SERVER_NAME}}", $serverName
+                    $block = $block -replace "{{FOLDER}}", $site.folder
+                    $block = $block -replace "{{NAME}}", $site.name
+                    $block = $block -replace "{{DOCUMENT_ROOT}}", $docRoot
+                    $block = $block -replace "{{XAMPP_ROOT_DIR}}", $xamppRoot
+                    
+                    # Remove ErrorLog/CustomLog lines if log directories don't exist
+                    $block = Remove-MissingLogDirectives -Block $block -DocumentRoot $docRoot -Folder $site.folder -AppType $appType
+                    
+                    $output += "# $($site.name) - HTTPS"
+                    $output += $block
+                    $output += ""
+                }
+            } else {
+                # HTTP only
+                $block = Get-VhostBlock -BlocksContent $blocksContent -AppType $appType -Https $false
+                
+                if ($block) {
+                    $block = $block -replace "{{PORT}}", $port
+                    $block = $block -replace "{{SSL_PORT}}", $sslPort
+                    $block = $block -replace "{{SERVER_NAME}}", $serverName
+                    $block = $block -replace "{{FOLDER}}", $site.folder
+                    $block = $block -replace "{{NAME}}", $site.name
+                    $block = $block -replace "{{DOCUMENT_ROOT}}", $docRoot
+                    $block = $block -replace "{{XAMPP_ROOT_DIR}}", $xamppRoot
+                    
+                    # Remove ErrorLog/CustomLog lines if log directories don't exist
+                    $block = Remove-MissingLogDirectives -Block $block -DocumentRoot $docRoot -Folder $site.folder -AppType $appType
+                    
+                    $output += "# $($site.name)"
+                    $output += $block
+                    $output += ""
+                }
             }
         }
         
@@ -429,22 +501,6 @@ if ($canBuildVhosts) {
 }
 Write-Host ""
 
-# Ask for default catch-all type (only if not provided via parameter)
-if (-not $CatchAllType) {
-    Write-Host "  🌐 Default Catch-All Configuration:" -ForegroundColor White
-    Write-Host ""
-    Write-Host "    1. Basic (simple, minimal security)" -ForegroundColor Gray
-    Write-Host "    2. Secure (with file blocking & upload protection)" -ForegroundColor Gray
-    Write-Host ""
-    $catchAllChoice = Read-Host "  Choose default catch-all type (1 or 2)"
-    $script:DefaultCatchAllType = if ($catchAllChoice -eq "2") { "Default-Secure" } else { "Default" }
-} else {
-    Write-Host "  🌐 Default Catch-All Configuration:" -ForegroundColor White
-    Write-Host ""
-}
-Write-Host "    ✅ Using: $script:DefaultCatchAllType" -ForegroundColor Green
-Write-Host ""
-
 if (-not (Prompt-YesNo "  Build all configs to dist/?")) {
     Write-Host ""
     Write-Host "  Cancelled." -ForegroundColor Yellow
@@ -454,9 +510,6 @@ if (-not (Prompt-YesNo "  Build all configs to dist/?")) {
 Write-Host ""
 Write-Host "  Building..." -ForegroundColor Cyan
 Write-Host ""
-
-# Add timestamp to env vars so all templates know when they were built
-$envData["TIMESTAMP"] = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
 
 # Build base templates
 $built = 0
@@ -489,7 +542,7 @@ if ($canBuildVhosts) {
     Write-Host "  🌐 VHosts Config:" -ForegroundColor White
     Write-Host ""
     
-    $vhostsResult = Build-VhostsConfig -EnvVars $envData -ValidSites $vhosts
+    $vhostsResult = Build-VhostsConfig -EnvVars $envData -ValidSites $vhosts -DefaultCatchAllType $script:DefaultCatchAllType
     
     if ($vhostsResult.Success) {
         Write-Host "    ✅ $($script:Config.vhosts.output) ($($vhostsResult.Count) sites)" -ForegroundColor Green
@@ -515,6 +568,6 @@ if ($failed -gt 0) {
 
 Write-Host ""
 Write-Host "  Next steps:" -ForegroundColor DarkGray
-Write-Host "    - Run 'deploy-configs' to deploy base configs to XAMPP" -ForegroundColor DarkGray
-Write-Host "    - Run 'deploy-vhosts' to deploy vhosts + hosts" -ForegroundColor DarkGray
+Write-Host "    • Run 'deploy-configs' to deploy base configs to XAMPP" -ForegroundColor DarkGray
+Write-Host "    • Run 'deploy-vhosts' to deploy vhosts + hosts" -ForegroundColor DarkGray
 Write-Host ""

@@ -1,16 +1,17 @@
 # Name: Deploy Configs
-# Description: Deploy base configs to XAMPP
-# Icon: 🚀
+# Description: Deploy all configs to XAMPP (base configs, vhosts, and hosts file)
 # Cmd: deploy-configs
 # Order: 6
 
 <#
 .SYNOPSIS
-    Deploy Configs - Deploy base configs from dist/ to XAMPP
+    Deploy Configs - Deploy all configs from dist/ to XAMPP
 
 .DESCRIPTION
-    Deploys base configs only (excludes vhosts and hosts).
-    Use 'deploy-vhosts' to deploy vhosts + hosts separately.
+    Deploys all configs including:
+    1. Base configs (httpd.conf, php.ini, etc.)
+    2. VHosts configuration (httpd-vhosts.conf)
+    3. Hosts file
 #>
 
 # Get paths
@@ -38,7 +39,7 @@ $script:DistDir = Join-Path $moduleRoot $script:Config.templates.distDir
 Show-Header
 
 Write-Host ""
-Write-Host "  🚀 Deploy Configs" -ForegroundColor Cyan
+Write-Host "  Deploy Configs" -ForegroundColor Cyan
 Write-Host "  ─────────────────────────────────────────────────────────" -ForegroundColor DarkGray
 Write-Host ""
 
@@ -57,41 +58,35 @@ if (-not (Test-Path $script:DistDir)) {
 # Load env
 $envData = Load-EnvFile $script:EnvFile
 $xamppRoot = if ($envData['XAMPP_ROOT_DIR']) { $envData['XAMPP_ROOT_DIR'] } else { "C:\xampp" }
+$docRoot = if ($envData['XAMPP_DOCUMENT_ROOT']) { $envData['XAMPP_DOCUMENT_ROOT'] } else { "C:\www" }
 
 Write-Host "  Source:  $($script:DistDir)" -ForegroundColor Gray
 Write-Host "  Target:  $xamppRoot" -ForegroundColor Gray
 Write-Host ""
 
-# Find files to deploy (exclude vhosts and hosts)
+# Find files to deploy
 $filesToDeploy = @()
 foreach ($mapping in $script:Config.deployMappings.mappings.PSObject.Properties) {
     $sourcePath = Join-Path $script:DistDir $mapping.Name
-    $targetPath = $mapping.Value
     
     # Substitute environment variables in target path
-    foreach ($key in $envData.Keys) {
-        $targetPath = $targetPath -replace [regex]::Escape("{{$key}}"), $envData[$key]
-    }
+    $targetValue = $mapping.Value
+    $targetValue = $targetValue -replace '\{\{XAMPP_ROOT_DIR\}\}', $xamppRoot
+    $targetValue = $targetValue -replace '\{\{XAMPP_DOCUMENT_ROOT\}\}', $docRoot
     
-    # Skip vhosts - deployed separately
-    if ($mapping.Name -match "httpd-vhosts\.conf$") {
-        continue
+    # Check if target path is absolute or relative
+    if ([System.IO.Path]::IsPathRooted($targetValue)) {
+        $targetPath = $targetValue
+    } else {
+        $targetPath = Join-Path $xamppRoot $targetValue
     }
     
     if (Test-Path $sourcePath) {
-        # Make target path absolute if it's relative to XAMPP_ROOT_DIR
-        $absoluteTarget = $targetPath
-        if (-not [System.IO.Path]::IsPathRooted($absoluteTarget)) {
-            $absoluteTarget = Join-Path $xamppRoot $absoluteTarget
-        }
-        
         $filesToDeploy += @{
             Source = $sourcePath
-            Target = $absoluteTarget
+            Target = $targetPath
             Name = $mapping.Name
         }
-    } else {
-        Write-Host "  ⚠️  Skipping (not found): $($mapping.Name) at $sourcePath" -ForegroundColor Yellow
     }
 }
 
@@ -103,7 +98,7 @@ if ($filesToDeploy.Count -eq 0) {
 Write-Host "  Files to deploy:" -ForegroundColor White
 Write-Host ""
 foreach ($file in $filesToDeploy) {
-    Write-Host "    📄 $($file.Name)" -ForegroundColor Gray
+    Write-Host "    - $($file.Name)" -ForegroundColor Gray
 }
 Write-Host ""
 
@@ -132,10 +127,10 @@ foreach ($file in $filesToDeploy) {
         }
         
         Copy-Item -Path $file.Source -Destination $file.Target -Force
-        Write-Host "    ✅ $($file.Name)" -ForegroundColor Green
+        Write-Host "    [OK] $($file.Name)" -ForegroundColor Green
         $deployed++
     } catch {
-        Write-Host "    ❌ $($file.Name) - $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "    [FAIL] $($file.Name) - $($_.Exception.Message)" -ForegroundColor Red
         $failed++
     }
 }
