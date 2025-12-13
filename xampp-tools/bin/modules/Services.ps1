@@ -23,6 +23,8 @@ function Show-ServiceStatus {
 # Get XAMPP root from .env
 $envVars = Load-EnvFile $script:EnvFile
 $xamppRoot = if ($envVars['XAMPP_ROOT_DIR']) { $envVars['XAMPP_ROOT_DIR'] } else { "C:\xampp" }
+$apacheExe = Join-Path $xamppRoot "apache\bin\httpd.exe"
+$mysqlExe = Join-Path $xamppRoot "mysql\bin\mysqld.exe"
 
 Show-Header
 Write-Host "  🔄 Service Manager" -ForegroundColor Yellow
@@ -42,35 +44,50 @@ $choice = Read-Host "  Select option"
 switch ($choice) {
     '1' {
         Write-Info "Starting services..."
-        $apacheStart = Join-Path $xamppRoot "apache_start.bat"
-        $mysqlStart = Join-Path $xamppRoot "mysql_start.bat"
-        if (Test-Path $apacheStart) { Start-Process -FilePath $apacheStart -WindowStyle Hidden }
-        if (Test-Path $mysqlStart) { Start-Process -FilePath $mysqlStart -WindowStyle Hidden }
+        # Start Apache
+        if (Test-Path $apacheExe) { 
+            & $apacheExe -k start 2>&1 | Out-Null
+        }
+        # Start MySQL
+        if (Test-Path $mysqlExe) {
+            & $mysqlExe --datadir="$xamppRoot\mysql\data" 2>&1 | Out-Null &
+        }
         Start-Sleep -Seconds 3
         Show-ServiceStatus
-        Write-Success "Start commands sent"
+        Write-Success "Services started"
     }
     '2' {
         Write-Info "Stopping services..."
-        $apacheStop = Join-Path $xamppRoot "apache_stop.bat"
-        $mysqlStop = Join-Path $xamppRoot "mysql_stop.bat"
-        if (Test-Path $apacheStop) { Start-Process -FilePath $apacheStop -WindowStyle Hidden }
-        if (Test-Path $mysqlStop) { Start-Process -FilePath $mysqlStop -WindowStyle Hidden }
+        # Stop Apache
+        if (Test-Path $apacheExe) { 
+            & $apacheExe -k stop 2>&1 | Out-Null
+        }
+        # Stop MySQL
+        $mysql = Get-Process -Name "mysqld" -ErrorAction SilentlyContinue
+        if ($mysql) { $mysql | Stop-Process -Force }
         Start-Sleep -Seconds 2
         Show-ServiceStatus
         Write-Success "Services stopped"
     }
     '3' {
         Write-Info "Restarting services..."
-        $apacheStop = Join-Path $xamppRoot "apache_stop.bat"
-        $mysqlStop = Join-Path $xamppRoot "mysql_stop.bat"
-        if (Test-Path $apacheStop) { Start-Process -FilePath $apacheStop -WindowStyle Hidden -Wait }
-        if (Test-Path $mysqlStop) { Start-Process -FilePath $mysqlStop -WindowStyle Hidden -Wait }
+        # Stop Apache
+        if (Test-Path $apacheExe) { 
+            & $apacheExe -k stop 2>&1 | Out-Null
+        }
+        # Stop MySQL
+        $mysql = Get-Process -Name "mysqld" -ErrorAction SilentlyContinue
+        if ($mysql) { $mysql | Stop-Process -Force }
         Start-Sleep -Seconds 2
-        $apacheStart = Join-Path $xamppRoot "apache_start.bat"
-        $mysqlStart = Join-Path $xamppRoot "mysql_start.bat"
-        if (Test-Path $apacheStart) { Start-Process -FilePath $apacheStart -WindowStyle Hidden }
-        if (Test-Path $mysqlStart) { Start-Process -FilePath $mysqlStart -WindowStyle Hidden }
+        
+        # Start Apache
+        if (Test-Path $apacheExe) { 
+            & $apacheExe -k start 2>&1 | Out-Null
+        }
+        # Start MySQL
+        if (Test-Path $mysqlExe) {
+            & $mysqlExe --datadir="$xamppRoot\mysql\data" 2>&1 | Out-Null &
+        }
         Start-Sleep -Seconds 3
         Show-ServiceStatus
         Write-Success "Services restarted"
