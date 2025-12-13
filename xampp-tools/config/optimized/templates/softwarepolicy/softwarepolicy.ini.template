@@ -1,0 +1,37 @@
+[CustomPolicies]
+; ✅ Allow Windows Defender
+C:\ProgramData\Microsoft\Windows Defender=1
+C:\ProgramData\Microsoft\Windows Defender\*\mpengine.dll=1
+
+; ✅ Allow system32 for conhost.exe, cmd.exe, powershell.exe
+C:\Windows\System32=1
+C:\Windows\SysWOW64=1
+C:\Windows\System32\conhost.exe=1
+C:\Windows\System32\cmd.exe=1
+
+; ✅ Allow PowerShell modules and execution
+C:\Program Files\PowerShell=1
+C:\Program Files\PowerShell\7=1
+C:\Windows\System32\WindowsPowerShell=1
+C:\Program Files\PowerShell\7\pwsh.exe=1
+
+; ✅ Allow Node.js and npm
+C:\Program Files\nodejs=1
+C:\Program Files\nodejs\node.exe=1
+C:\Program Files\nodejs\npm=1
+C:\Program Files\nodejs\npm.cmd=1
+C:\Program Files\nodejs\npx=1
+C:\Program Files\nodejs\npx.cmd=1
+
+; ✅ Allow Visual Studio Code and Terminal
+C:\Users\*\AppData\Local\Programs\Microsoft VS Code=1
+C:\Users\*\AppData\Local\Programs\Microsoft VS Code\resources\app\node_modules\node-pty\build\Release\winpty-agent.exe=1
+
+; ✅ Allow XAMPP (Apache, MySQL, PHP)
+{{XAMPP_PATHS}}
+
+; ✅ Allow Dev-Tools and Scripts
+{{DEVTOOLS_PATHS}}
+
+; ✅ Allow Custom User Paths
+{{USER_CUSTOM_PATHS}}

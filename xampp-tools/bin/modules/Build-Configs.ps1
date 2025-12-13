@@ -1,6 +1,5 @@
 # Name: Build Configs
 # Description: Build all configs from templates
-# Icon: 📦
 # Cmd: build-configs
 # Order: 5
 
@@ -9,12 +8,10 @@
     Build Configs - Compile all templates to dist/
 
 .DESCRIPTION
-    Builds ALL configs to dist/:
+    Builds base configs to dist/:
     1. Base configs (httpd.conf, php.ini, etc.) from templates
     2. VHosts (httpd-vhosts.conf) from vhosts.json
     3. Hosts file from vhosts.json server names
-    
-    Deploy separately with 'deploy-configs' or 'deploy-vhosts'
 #>
 
 # Get paths
@@ -62,6 +59,9 @@ function Build-ConfigFromTemplate {
             $placeholder = "{{$key}}"
             $content = $content -replace [regex]::Escape($placeholder), $EnvVars[$key]
         }
+        
+        # Replace runtime placeholders
+        $content = $content -replace [regex]::Escape("{{TIMESTAMP}}"), (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
         
         # Special handling for hosts template - inject vhosts entries
         if ($Type -eq "hosts") {
@@ -164,10 +164,61 @@ function Test-SiteFolder {
     }
 }
 
+function Remove-MissingLogDirectives {
+    param(
+        [string]$Block,
+        [string]$DocumentRoot,
+        [string]$Folder,
+        [string]$AppType
+    )
+    
+    # Determine the expected log directory based on app type
+    $logDir = switch ($AppType.ToLower()) {
+        "laravel" { "$DocumentRoot/$Folder/storage/logs" }
+        "react" { "$DocumentRoot/$Folder/storage/logs" }
+        "wordpress" { "$DocumentRoot/$Folder/logs" }
+        "static" { "$DocumentRoot/$Folder/logs" }
+        default { "$DocumentRoot/$Folder/logs" }
+    }
+    
+    # Convert to Windows path for testing
+    $logDirTest = $logDir -replace "/", "\"
+    
+    # If log directory does NOT exist, remove the conditional markers and log lines
+    if (-not (Test-Path $logDirTest)) {
+        # Remove lines that contain {{#IF_LOG_DIR}}, {{/IF_LOG_DIR}}, ErrorLog, and CustomLog
+        $lines = $Block -split "`n"
+        $filteredLines = @()
+        $inLogBlock = $false
+        
+        foreach ($line in $lines) {
+            if ($line -match '\{\{#IF_LOG_DIR\}\}') {
+                $inLogBlock = $true
+            } elseif ($line -match '\{\{/IF_LOG_DIR\}\}') {
+                $inLogBlock = $false
+            } elseif ($inLogBlock) {
+                # Skip lines inside log block
+                continue
+            } else {
+                $filteredLines += $line
+            }
+        }
+        
+        $Block = $filteredLines -join "`n"
+    } else {
+        # Log directory exists, just remove the conditional markers
+        $Block = $Block -replace '\{\{#IF_LOG_DIR\}\}', ''
+        $Block = $Block -replace '\{\{/IF_LOG_DIR\}\}', ''
+    }
+    
+    return $Block
+}
+
 function Build-VhostsConfig {
     param(
         [hashtable]$EnvVars,
-        [array]$ValidSites
+        [array]$ValidSites,
+        [string]$DefaultCatchAllType = "Default"
     )
     
     $blocksTemplatePath = Join-Path $script:TemplatesDir $script:Config.vhosts.blocksTemplate
@@ -193,6 +244,50 @@ function Build-VhostsConfig {
         $xamppRoot = if ($EnvVars['XAMPP_ROOT_DIR']) { $EnvVars['XAMPP_ROOT_DIR'] } else { "C:\xampp" }
         $domainExt = if ($EnvVars['VHOSTS_EXTENSION']) { $EnvVars['VHOSTS_EXTENSION'] } else { ".local" }
         
+        # Add default localhost catch-all from template
+        $output += "# Default (localhost) - Fallback for unmatched requests"
+        $defaultBlock = Get-VhostBlock -BlocksContent $blocksContent -AppType "Default" -Https $false
+        if ($defaultBlock) {
+            $defaultBlock = $defaultBlock -replace "{{PORT}}", $port
+            $defaultBlock = $defaultBlock -replace "{{SSL_PORT}}", $sslPort
+            $defaultBlock = $defaultBlock -replace "{{SERVER_NAME}}", "localhost"
+            $defaultBlock = $defaultBlock -replace "{{FOLDER}}", "."
+            $defaultBlock = $defaultBlock -replace "{{NAME}}", "Default (localhost)"
+            $defaultBlock = $defaultBlock -replace "{{DOCUMENT_ROOT}}", $docRoot
+            $defaultBlock = $defaultBlock -replace "{{XAMPP_ROOT_DIR}}", $xamppRoot
+            
+            # Check if logs directory exists for default catch-all
+            $logDirTest = "$docRoot\logs"
+            if (-not (Test-Path $logDirTest)) {
+                # Log directory doesn't exist, remove the conditional markers and log lines
+                $lines = $defaultBlock -split "`n"
+                $filteredLines = @()
+                $inLogBlock = $false
+                
+                foreach ($line in $lines) {
+                    if ($line -match '\{\{#IF_LOG_DIR\}\}') {
+                        $inLogBlock = $true
+                    } elseif ($line -match '\{\{/IF_LOG_DIR\}\}') {
+                        $inLogBlock = $false
+                    } elseif ($inLogBlock) {
+                        # Skip lines inside log block
+                        continue
+                    } else {
+                        $filteredLines += $line
+                    }
+                }
+                
+                $defaultBlock = $filteredLines -join "`n"
+            } else {
+                # Log directory exists, just remove the conditional markers
+                $defaultBlock = $defaultBlock -replace '\{\{#IF_LOG_DIR\}\}', ''
+                $defaultBlock = $defaultBlock -replace '\{\{/IF_LOG_DIR\}\}', ''
+            }
+            
+            $output += $defaultBlock
+            $output += ""
+        }
+        
         foreach ($site in $ValidSites) {
             $appType = switch ($site.type.ToLower()) {
                 "laravel" { "Laravel" }
@@ -202,7 +297,9 @@ function Build-VhostsConfig {
                 default { "Static" }
             }
             
-            $https = if ($site.https) { $true } else { $false }
+            # Check for SSL - support both 'ssl' and 'https' properties
+            # Handle various truthy values from JSON
+            $sslEnabled = ($site.ssl -eq $true) -or ($site.ssl -eq "true") -or ($site.https -eq $true) -or ($site.https -eq "true")
             
             # Generate server name: use serverName if specified, otherwise folder.domainExt
             if ($site.serverName) {
@@ -213,20 +310,57 @@ function Build-VhostsConfig {
                 $serverName = "$baseName$domainExt"
             }
             
-            $block = Get-VhostBlock -BlocksContent $blocksContent -AppType $appType -Https $https
-            
-            if ($block) {
-                $block = $block -replace "{{PORT}}", $port
-                $block = $block -replace "{{SSL_PORT}}", $sslPort
-                $block = $block -replace "{{SERVER_NAME}}", $serverName
-                $block = $block -replace "{{FOLDER}}", $site.folder
-                $block = $block -replace "{{NAME}}", $site.name
-                $block = $block -replace "{{DOCUMENT_ROOT}}", $docRoot
-                $block = $block -replace "{{XAMPP_ROOT_DIR}}", $xamppRoot
-                
-                $output += "# $($site.name)"
-                $output += $block
+            if ($sslEnabled) {
+                # SSL enabled: Generate HTTP redirect + HTTPS block
+                $redirectBlock = @"
+<VirtualHost *:$port>
+    ServerName $serverName
+    Redirect permanent / https://$serverName/
+</VirtualHost>
+"@
+                $output += "# $($site.name) - HTTP to HTTPS Redirect"
+                $output += $redirectBlock
                 $output += ""
+                
+                # Get HTTPS block
+                $block = Get-VhostBlock -BlocksContent $blocksContent -AppType $appType -Https $true
+                
+                if ($block) {
+                    $block = $block -replace "{{PORT}}", $port
+                    $block = $block -replace "{{SSL_PORT}}", $sslPort
+                    $block = $block -replace "{{SERVER_NAME}}", $serverName
+                    $block = $block -replace "{{FOLDER}}", $site.folder
+                    $block = $block -replace "{{NAME}}", $site.name
+                    $block = $block -replace "{{DOCUMENT_ROOT}}", $docRoot
+                    $block = $block -replace "{{XAMPP_ROOT_DIR}}", $xamppRoot
+                    
+                    # Remove ErrorLog/CustomLog lines if log directories don't exist
+                    $block = Remove-MissingLogDirectives -Block $block -DocumentRoot $docRoot -Folder $site.folder -AppType $appType
+                    
+                    $output += "# $($site.name) - HTTPS"
+                    $output += $block
+                    $output += ""
+                }
+            } else {
+                # HTTP only
+                $block = Get-VhostBlock -BlocksContent $blocksContent -AppType $appType -Https $false
+                
+                if ($block) {
+                    $block = $block -replace "{{PORT}}", $port
+                    $block = $block -replace "{{SSL_PORT}}", $sslPort
+                    $block = $block -replace "{{SERVER_NAME}}", $serverName
+                    $block = $block -replace "{{FOLDER}}", $site.folder
+                    $block = $block -replace "{{NAME}}", $site.name
+                    $block = $block -replace "{{DOCUMENT_ROOT}}", $docRoot
+                    $block = $block -replace "{{XAMPP_ROOT_DIR}}", $xamppRoot
+                    
+                    # Remove ErrorLog/CustomLog lines if log directories don't exist
+                    $block = Remove-MissingLogDirectives -Block $block -DocumentRoot $docRoot -Folder $site.folder -AppType $appType
+                    
+                    $output += "# $($site.name)"
+                    $output += $block
+                    $output += ""
+                }
             }
         }
         
@@ -408,7 +542,7 @@ if ($canBuildVhosts) {
     Write-Host "  🌐 VHosts Config:" -ForegroundColor White
     Write-Host ""
     
-    $vhostsResult = Build-VhostsConfig -EnvVars $envData -ValidSites $vhosts
+    $vhostsResult = Build-VhostsConfig -EnvVars $envData -ValidSites $vhosts -DefaultCatchAllType $script:DefaultCatchAllType
     
     if ($vhostsResult.Success) {
         Write-Host "    ✅ $($script:Config.vhosts.output) ($($vhostsResult.Count) sites)" -ForegroundColor Green

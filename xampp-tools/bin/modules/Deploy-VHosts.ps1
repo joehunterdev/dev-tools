@@ -3,6 +3,7 @@
 # Icon: 🌐
 # Cmd: deploy-vhosts
 # Order: 7
+# Hidden: true
 
 <#
 .SYNOPSIS

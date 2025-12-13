@@ -1,12 +1,9 @@
 [PHP]
-<<<<<<< Updated upstream
-=======
 ; Min Template built: {{TIMESTAMP}}
->>>>>>> Stashed changes
 
 ;;;;;;;;;;;;;;;;;;;
 ; About php.ini   ;
-;;;;;;;;;;;;;;;;;;;.
+;;;;;;;;;;;;;;;;;;;
 
 ; This is the php.ini-development INI file.
 

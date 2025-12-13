@@ -13,8 +13,10 @@
         Require all granted
     </Directory>
 
+    {{#IF_LOG_DIR}}
     ErrorLog "{{DOCUMENT_ROOT}}/{{FOLDER}}/storage/logs/error.log"
     CustomLog "{{DOCUMENT_ROOT}}/{{FOLDER}}/storage/logs/access.log" common
+    {{/IF_LOG_DIR}}
 </VirtualHost>
 
 ##############################################
@@ -30,11 +32,13 @@
     </Directory>
 
     SSLEngine on
-    SSLCertificateFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.crt/server.crt"
-    SSLCertificateKeyFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.key/server.key"
+    SSLCertificateFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.crt/{{SERVER_NAME}}-selfsigned.crt"
+    SSLCertificateKeyFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.key/{{SERVER_NAME}}-selfsigned.key"
 
+    {{#IF_LOG_DIR}}
     ErrorLog "{{DOCUMENT_ROOT}}/{{FOLDER}}/storage/logs/error.log"
     CustomLog "{{DOCUMENT_ROOT}}/{{FOLDER}}/storage/logs/access.log" common
+    {{/IF_LOG_DIR}}
 </VirtualHost>
 
 ##############################################
@@ -49,6 +53,11 @@
         AllowOverride All
         Require all granted
     </Directory>
+
+    {{#IF_LOG_DIR}}
+    ErrorLog "{{DOCUMENT_ROOT}}/{{FOLDER}}/storage/logs/error.log"
+    CustomLog "{{DOCUMENT_ROOT}}/{{FOLDER}}/storage/logs/access.log" common
+    {{/IF_LOG_DIR}}
 </VirtualHost>
 
 ##############################################
@@ -65,8 +74,13 @@
     </Directory>
 
     SSLEngine on
-    SSLCertificateFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.crt/server.crt"
-    SSLCertificateKeyFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.key/server.key"
+    SSLCertificateFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.crt/{{SERVER_NAME}}-selfsigned.crt"
+    SSLCertificateKeyFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.key/{{SERVER_NAME}}-selfsigned.key"
+
+    {{#IF_LOG_DIR}}
+    ErrorLog "{{DOCUMENT_ROOT}}/{{FOLDER}}/storage/logs/error.log"
+    CustomLog "{{DOCUMENT_ROOT}}/{{FOLDER}}/storage/logs/access.log" common
+    {{/IF_LOG_DIR}}
 </VirtualHost>
 
 ##############################################
@@ -86,8 +100,10 @@
         RewriteEngine On
     </IfModule>
 
-    ErrorLog "logs/{{SERVER_NAME}}-error.log"
-    CustomLog "logs/{{SERVER_NAME}}-access.log" common
+    {{#IF_LOG_DIR}}
+    ErrorLog "{{DOCUMENT_ROOT}}/{{FOLDER}}/logs/error.log"
+    CustomLog "{{DOCUMENT_ROOT}}/{{FOLDER}}/logs/access.log" common
+    {{/IF_LOG_DIR}}
 </VirtualHost>
 
 ##############################################
@@ -108,11 +124,13 @@
     </IfModule>
 
     SSLEngine on
-    SSLCertificateFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.crt/server.crt"
-    SSLCertificateKeyFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.key/server.key"
+    SSLCertificateFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.crt/{{SERVER_NAME}}-selfsigned.crt"
+    SSLCertificateKeyFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.key/{{SERVER_NAME}}-selfsigned.key"
 
-    ErrorLog "logs/{{SERVER_NAME}}-error.log"
-    CustomLog "logs/{{SERVER_NAME}}-access.log" common
+    {{#IF_LOG_DIR}}
+    ErrorLog "{{DOCUMENT_ROOT}}/{{FOLDER}}/logs/error.log"
+    CustomLog "{{DOCUMENT_ROOT}}/{{FOLDER}}/logs/access.log" common
+    {{/IF_LOG_DIR}}
 </VirtualHost>
 
 ##############################################
@@ -129,8 +147,10 @@
         DirectoryIndex index.php index.html
     </Directory>
 
-    ErrorLog "logs/{{NAME}}-error.log"
-    CustomLog "logs/{{NAME}}-access.log" common
+    {{#IF_LOG_DIR}}
+    ErrorLog "{{DOCUMENT_ROOT}}/{{FOLDER}}/logs/error.log"
+    CustomLog "{{DOCUMENT_ROOT}}/{{FOLDER}}/logs/access.log" common
+    {{/IF_LOG_DIR}}
 </VirtualHost>
 
 ##############################################
@@ -148,11 +168,13 @@
     </Directory>
 
     SSLEngine on
-    SSLCertificateFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.crt/server.crt"
-    SSLCertificateKeyFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.key/server.key"
+    SSLCertificateFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.crt/{{SERVER_NAME}}-selfsigned.crt"
+    SSLCertificateKeyFile "{{XAMPP_ROOT_DIR}}/apache/conf/ssl.key/{{SERVER_NAME}}-selfsigned.key"
 
-    ErrorLog "logs/{{NAME}}-error.log"
-    CustomLog "logs/{{NAME}}-access.log" common
+    {{#IF_LOG_DIR}}
+    ErrorLog "{{DOCUMENT_ROOT}}/{{FOLDER}}/logs/error.log"
+    CustomLog "{{DOCUMENT_ROOT}}/{{FOLDER}}/logs/access.log" common
+    {{/IF_LOG_DIR}}
 </VirtualHost>
 
 ##############################################
@@ -162,4 +184,25 @@
 <VirtualHost *:{{PORT}}>
     ServerName {{SERVER_NAME}}
     Redirect permanent / https://{{SERVER_NAME}}/
+</VirtualHost>
+
+##############################################
+# DEFAULT CATCH-ALL (localhost)
+##############################################
+## App:Default HTTPS:false
+<VirtualHost _default_:{{PORT}}>
+    ServerName localhost
+    ServerAlias 127.0.0.1
+    DocumentRoot "{{DOCUMENT_ROOT}}"
+    <Directory "{{DOCUMENT_ROOT}}">
+        Options Indexes FollowSymLinks
+        AllowOverride All
+        Require all granted
+        DirectoryIndex index.php index.html index.htm
+    </Directory>
+
+    {{#IF_LOG_DIR}}
+    ErrorLog "{{DOCUMENT_ROOT}}/logs/error.log"
+    CustomLog "{{DOCUMENT_ROOT}}/logs/access.log" common
+    {{/IF_LOG_DIR}}
 </VirtualHost>

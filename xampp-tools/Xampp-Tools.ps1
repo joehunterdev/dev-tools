@@ -50,12 +50,14 @@ function Get-AvailableModules {
             $icon = "📦"
             $cmd = $_.BaseName.ToLower()
             $order = 99
+            $hidden = $false
             
             if ($content -match '#\s*Name:\s*(.+)') { $name = $matches[1].Trim() }
             if ($content -match '#\s*Description:\s*(.+)') { $description = $matches[1].Trim() }
             if ($content -match '#\s*Icon:\s*(.+)') { $icon = $matches[1].Trim() }
             if ($content -match '#\s*Cmd:\s*(.+)') { $cmd = $matches[1].Trim().ToLower() }
             if ($content -match '#\s*Order:\s*(\d+)') { $order = [int]$matches[1] }
+            if ($content -match '#\s*Hidden:\s*(true|false)') { $hidden = [bool]::Parse($matches[1]) }
             
             $modules += @{
                 Name = $name
@@ -63,6 +65,7 @@ function Get-AvailableModules {
                 Icon = $icon
                 Cmd = $cmd
                 Order = $order
+                Hidden = $hidden
                 Path = $_.FullName
                 FileName = $_.Name
             }
@@ -82,7 +85,7 @@ function Show-MainMenu {
     
     # Admin status
     $isAdmin = Test-Administrator
-    $adminStatus = if ($isAdmin) { "✅ Running as Administrator" } else { "⚠️  Not running as Administrator" }
+    $adminStatus = if ($isAdmin) { "[OK] Running as Administrator" } else { "[!] Not running as Administrator" }
     Write-Host "  $adminStatus" -ForegroundColor $(if ($isAdmin) { "Green" } else { "Yellow" })
     Write-Host ""
     Write-Host "  ─────────────────────────────────────────────────────────" -ForegroundColor DarkGray
@@ -95,14 +98,15 @@ function Show-MainMenu {
     Write-Host "  Commands:" -ForegroundColor White
     Write-Host ""
     
-    # Build horizontal display
+    # Build horizontal display (only non-hidden modules)
+    $visibleModules = $modules | Where-Object { -not $_.Hidden }
     $menuLine = "  "
     $key = 1
-    foreach ($mod in $modules) {
-        $menuLine += "$($mod.Icon) $key/$($mod.Cmd)  "
+    foreach ($mod in $visibleModules) {
+        $menuLine += "$key/$($mod.Cmd)  "
         $key++
     }
-    $menuLine += "❌ 0/exit"
+    $menuLine += "[0/exit]"
     
     Write-Host $menuLine -ForegroundColor Gray
     Write-Host ""
@@ -116,21 +120,21 @@ function Show-MainMenu {
     # Handle exit
     if ($choiceLower -eq '0' -or $choiceLower -eq 'exit' -or $choiceLower -eq 'q') {
         Write-Host ""
-        Write-Host "  Goodbye! 🧑‍🚀" -ForegroundColor Cyan
+        Write-Host "  Goodbye!" -ForegroundColor Cyan
         Write-Host ""
         exit
     }
     
-    # Try to match by number
+    # Try to match by number (only visible modules)
     if ($choice -match '^\d+$') {
         $index = [int]$choice - 1
-        if ($index -ge 0 -and $index -lt $modules.Count) {
-            & $modules[$index].Path
+        if ($index -ge 0 -and $index -lt $visibleModules.Count) {
+            & $visibleModules[$index].Path
             Prompt-Continue
         }
     }
     else {
-        # Try to match by command name
+        # Try to match by command name (all modules, including hidden)
         $matched = $modules | Where-Object { $_.Cmd -eq $choiceLower }
         if ($matched) {
             & $matched.Path

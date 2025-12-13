@@ -124,3 +124,34 @@ function Load-FilesConfig {
         return $null
     }
 }
+
+function Write-AuditLog {
+    param(
+        [string]$Issue,
+        [string]$Apply,
+        [string]$Result,
+        [string]$LogDir
+    )
+    
+    # Create log directory if needed
+    if (-not (Test-Path $LogDir)) {
+        New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
+    }
+    
+    $logPath = Join-Path $LogDir "srp-audit.log"
+    $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    
+    $logEntry = @"
+[$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')]
+Issue: $Issue
+Apply: $Apply
+Result: $Result
+---
+
+"@
+    
+    Add-Content -Path $logPath -Value $logEntry -Force
+    
+    return $logPath
+}
+
