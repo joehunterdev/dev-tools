@@ -301,6 +301,10 @@ function Build-VhostsConfig {
             # Handle various truthy values from JSON
             $sslEnabled = ($site.ssl -eq $true) -or ($site.ssl -eq "true") -or ($site.https -eq $true) -or ($site.https -eq "true")
             
+            # Per-site port override: use site.port if specified, otherwise use env default
+            $sitePort = if ($site.port) { $site.port.ToString() } else { $port }
+            $siteSslPort = if ($site.sslPort) { $site.sslPort.ToString() } else { $sslPort }
+            
             # Generate server name: use serverName if specified, otherwise folder.domainExt
             if ($site.serverName) {
                 $serverName = $site.serverName
@@ -313,7 +317,7 @@ function Build-VhostsConfig {
             if ($sslEnabled) {
                 # SSL enabled: Generate HTTP redirect + HTTPS block
                 $redirectBlock = @"
-<VirtualHost *:$port>
+<VirtualHost *:$sitePort>
     ServerName $serverName
     Redirect permanent / https://$serverName/
 </VirtualHost>
@@ -326,8 +330,8 @@ function Build-VhostsConfig {
                 $block = Get-VhostBlock -BlocksContent $blocksContent -AppType $appType -Https $true
                 
                 if ($block) {
-                    $block = $block -replace "{{PORT}}", $port
-                    $block = $block -replace "{{SSL_PORT}}", $sslPort
+                    $block = $block -replace "{{PORT}}", $sitePort
+                    $block = $block -replace "{{SSL_PORT}}", $siteSslPort
                     $block = $block -replace "{{SERVER_NAME}}", $serverName
                     $block = $block -replace "{{FOLDER}}", $site.folder
                     $block = $block -replace "{{NAME}}", $site.name
@@ -346,8 +350,8 @@ function Build-VhostsConfig {
                 $block = Get-VhostBlock -BlocksContent $blocksContent -AppType $appType -Https $false
                 
                 if ($block) {
-                    $block = $block -replace "{{PORT}}", $port
-                    $block = $block -replace "{{SSL_PORT}}", $sslPort
+                    $block = $block -replace "{{PORT}}", $sitePort
+                    $block = $block -replace "{{SSL_PORT}}", $siteSslPort
                     $block = $block -replace "{{SERVER_NAME}}", $serverName
                     $block = $block -replace "{{FOLDER}}", $site.folder
                     $block = $block -replace "{{NAME}}", $site.name
