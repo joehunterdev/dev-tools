@@ -14,3 +14,5 @@
  - [] Quick create db
  - [] Quick create addd aditonal vhosts config
  - [] restart xampp using its app path
+-  [] Build and test config for wp
+ - [] Secure install and rotate credentials

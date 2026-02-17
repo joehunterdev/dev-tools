@@ -2,6 +2,9 @@
 .env
 *.local
 
+# Private local-only modules
+xampp-tools/bin/modules/.private/
+
 # Workspace files (allow root workspace, ignore others)
 !dev-tools.code-workspace
 xampp-tools/*.code-workspace
