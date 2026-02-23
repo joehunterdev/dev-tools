@@ -38,6 +38,49 @@ $script:VhostsFile = Join-Path $moduleRoot $script:Config.vhosts.sitesFile
 # FUNCTIONS
 # ============================================================
 
+function Get-SiteDomain {
+    param(
+        [PSCustomObject]$Site,
+        [string]$DomainExtension
+    )
+    
+    # Priority: domain > serverName > derived from folder
+    if ($Site.domain) {
+        return $Site.domain
+    } elseif ($Site.serverName) {
+        return $Site.serverName
+    } else {
+        # Strip any existing extension from folder and add domain ext
+        $baseName = $Site.folder -replace '\.[^.]+$', ''
+        return "$baseName$DomainExtension"
+    }
+}
+
+function Test-DuplicateDomains {
+    param(
+        [array]$Sites,
+        [string]$DomainExtension
+    )
+    
+    $domains = @{}
+    $duplicates = @()
+    
+    foreach ($site in $Sites) {
+        $domain = Get-SiteDomain -Site $site -DomainExtension $DomainExtension
+        
+        if ($domains.ContainsKey($domain)) {
+            $duplicates += @{
+                Domain = $domain
+                Sites = @($domains[$domain], $site.name)
+            }
+        } else {
+            $domains[$domain] = $site.name
+        }
+    }
+    
+    return $duplicates
+}
+
 function Build-ConfigFromTemplate {
     param(
         [string]$TemplatePath,
@@ -71,13 +114,8 @@ function Build-ConfigFromTemplate {
             if ($VhostsSites.Count -gt 0) {
                 $vhostsEntries = @()
                 foreach ($site in $VhostsSites) {
-                    # Generate server name: use serverName if specified, otherwise folder + extension
-                    if ($site.serverName) {
-                        $serverName = $site.serverName
-                    } else {
-                        $baseName = $site.folder -replace '\.[^.]+$', ''
-                        $serverName = "$baseName$domainExt"
-                    }
+                    # Generate server name: priority is domain > serverName > derived from folder
+                    $serverName = Get-SiteDomain -Site $site -DomainExtension $domainExt
                     $vhostsEntries += "127.0.0.1       $serverName"
                 }
                 $content = $content -replace [regex]::Escape("{{VHOSTS_ENTRIES}}"), ($vhostsEntries -join "`n")
@@ -305,14 +343,8 @@ function Build-VhostsConfig {
             $sitePort = if ($site.port) { $site.port.ToString() } else { $port }
             $siteSslPort = if ($site.sslPort) { $site.sslPort.ToString() } else { $sslPort }
             
-            # Generate server name: use serverName if specified, otherwise folder.domainExt
-            if ($site.serverName) {
-                $serverName = $site.serverName
-            } else {
-                # Strip any existing extension from folder and add domain ext
-                $baseName = $site.folder -replace '\.[^.]+$', ''
-                $serverName = "$baseName$domainExt"
-            }
+            # Generate server name: priority is domain > serverName > derived from folder
+            $serverName = Get-SiteDomain -Site $site -DomainExtension $domainExt
             
             if ($sslEnabled) {
                 # SSL enabled: Generate HTTP redirect + HTTPS block
@@ -455,6 +487,21 @@ if ($vhostsJsonExists) {
     
     # Support both "vhosts" and "sites" array names
     $sitesList = if ($vhostsJson.vhosts) { $vhostsJson.vhosts } elseif ($vhostsJson.sites) { $vhostsJson.sites } else { @() }
+    
+    # Check for duplicate domains
+    $domainExt = if ($envData['VHOSTS_EXTENSION']) { $envData['VHOSTS_EXTENSION'] } else { ".local" }
+    $duplicates = Test-DuplicateDomains -Sites $sitesList -DomainExtension $domainExt
+    
+    if ($duplicates.Count -gt 0) {
+        Write-Host "  ⚠️  Duplicate domains detected:" -ForegroundColor Yellow
+        Write-Host ""
+        foreach ($dup in $duplicates) {
+            Write-Host "    ⚫ $($dup.Domain) is used by: $($dup.Sites -join ', ')" -ForegroundColor Red
+        }
+        Write-Host ""
+        Write-Error2 "Cannot build with duplicate domains! Please fix vhosts.json"
+        exit
+    }
     
     foreach ($site in $sitesList) {
         $siteType = if ($site.type) { $site.type } else { "static" }
