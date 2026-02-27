@@ -39,6 +39,10 @@
 		{
 			"name": "🔐 Software Policy",
 			"path": "../../Windows/SoftwarePolicy"
+		},
+		{
+			"name": "📋 XAMPP Logs",
+			"path": "../../xampp/apache/logs"
 		}
 		
 	],
