@@ -1,4 +1,4 @@
-# Name: Services
+﻿# Name: Services
 # Description: Start/Stop Apache & MySQL
 # Cmd: services
 # Order: 2

@@ -1,4 +1,4 @@
-# Name: Redeploy All
+﻿# Name: Redeploy All
 # Description: Build, deploy configs, deploy vhosts, and restart server
 # Icon: 🔄
 # Cmd: redeploy

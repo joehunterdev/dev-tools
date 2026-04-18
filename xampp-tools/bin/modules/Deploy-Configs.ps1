@@ -1,4 +1,4 @@
-# Name: Deploy Configs
+﻿# Name: Deploy Configs
 # Description: Deploy all configs to XAMPP (base configs, vhosts, and hosts file)
 # Cmd: deploy-configs
 # Order: 6
@@ -57,8 +57,10 @@ if (-not (Test-Path $script:DistDir)) {
 
 # Load env
 $envData = Load-EnvFile $script:EnvFile
-$xamppRoot = if ($envData['XAMPP_ROOT_DIR']) { $envData['XAMPP_ROOT_DIR'] } else { "C:\xampp" }
-$docRoot = if ($envData['XAMPP_DOCUMENT_ROOT']) { $envData['XAMPP_DOCUMENT_ROOT'] } else { "C:\www" }
+$xamppRoot        = if ($envData['XAMPP_ROOT_DIR'])            { $envData['XAMPP_ROOT_DIR'] }            else { "C:\xampp" }
+$docRoot          = if ($envData['XAMPP_DOCUMENT_ROOT'])        { $envData['XAMPP_DOCUMENT_ROOT'] }        else { "C:\www" }
+$vscodeExtDir     = "$env:USERPROFILE\.vscode\extensions"
+$vscodeThemeExt   = if ($envData['VSCODE_THEME_EXTENSION'])     { $envData['VSCODE_THEME_EXTENSION'] }     else { "joehunterdev.joehunter-theme-1.0.0" }
 
 Write-Host "  Source:  $($script:DistDir)" -ForegroundColor Gray
 Write-Host "  Target:  $xamppRoot" -ForegroundColor Gray
@@ -71,8 +73,10 @@ foreach ($mapping in $script:Config.deployMappings.mappings.PSObject.Properties)
     
     # Substitute environment variables in target path
     $targetValue = $mapping.Value
-    $targetValue = $targetValue -replace '\{\{XAMPP_ROOT_DIR\}\}', $xamppRoot
-    $targetValue = $targetValue -replace '\{\{XAMPP_DOCUMENT_ROOT\}\}', $docRoot
+    $targetValue = $targetValue -replace '\{\{XAMPP_ROOT_DIR\}\}',         $xamppRoot
+    $targetValue = $targetValue -replace '\{\{XAMPP_DOCUMENT_ROOT\}\}',    $docRoot
+    $targetValue = $targetValue -replace '\{\{VSCODE_EXTENSIONS_DIR\}\}',  $vscodeExtDir
+    $targetValue = $targetValue -replace '\{\{VSCODE_THEME_EXTENSION\}\}', $vscodeThemeExt
     
     # Check if target path is absolute or relative
     if ([System.IO.Path]::IsPathRooted($targetValue)) {

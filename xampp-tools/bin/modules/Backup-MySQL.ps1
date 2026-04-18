@@ -1,4 +1,4 @@
-# Name: Backup MySQL
+﻿# Name: Backup MySQL
 # Description: Backup MySQL databases
 # Icon: 🗄️
 # Cmd: backup-mysql

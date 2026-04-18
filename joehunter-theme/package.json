@@ -1,0 +1,43 @@
+{
+  "name": "joehunter-theme",
+  "displayName": "Joe Hunter Theme",
+  "description": "A dark VS Code theme based on the joehunter.es brand palette — deep purple, mint, and charcoal.",
+  "version": "1.0.0",
+  "publisher": "joehunterdev",
+  "author": {
+    "name": "Joe Hunter",
+    "url": "https://joehunter.es"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/joehunterdev/dev-tools"
+  },
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "categories": [
+    "Themes"
+  ],
+  "keywords": [
+    "theme",
+    "dark",
+    "purple",
+    "mint",
+    "joehunter"
+  ],
+  "contributes": {
+    "themes": [
+      {
+        "label": "Joe Hunter Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/joehunter-dark.json"
+      },
+      {
+        "label": "Joe Hunter Dark (High Contrast)",
+        "uiTheme": "vs-dark",
+        "path": "./themes/joehunter-dark-hc.json"
+      }
+    ]
+  },
+  "icon": "icon.png"
+}

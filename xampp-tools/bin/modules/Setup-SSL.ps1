@@ -1,4 +1,4 @@
-# Name: Setup SSL
+﻿# Name: Setup SSL
 # Description: Generate SSL certificates for local sites
 # Icon: 🔐
 # Cmd: setup-ssl
