@@ -18,3 +18,5 @@
  - [] Secure install and rotate credentials
  - []  � lets remove these unicode wierd vars
  - [] Custom localhost handler for callbacks from sso sites
+ - [x] Add to icons, shortcuts deskop and start menu
+ - [] WFC tools

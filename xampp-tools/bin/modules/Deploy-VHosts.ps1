@@ -488,8 +488,13 @@ $testResult = Test-ApacheConfig -XamppRoot $xamppRoot
 
 if ($testResult.Success) {
     Write-Success "Apache config syntax OK!"
-    Write-Host ""
-    Write-Host "  ⚠️  Restart Apache to apply changes" -ForegroundColor Yellow
+    . (Join-Path $moduleRoot "bin\Service-Helpers.ps1")
+    if (Prompt-YesNo "  Restart services now?") {
+        Write-Info "Restarting..."
+        Invoke-XamppRestart
+        Show-XamppStatus
+        Write-Success "Services restarted"
+    }
 } else {
     Write-Error2 "Apache config test FAILED!"
     Write-Host ""

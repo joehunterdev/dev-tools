@@ -155,6 +155,13 @@ if ([string]::IsNullOrEmpty($rootPassword)) {
     $rootPassword = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToCoTaskMemUnicode($rootPassword))
 }
 
+# Pre-flight: ensure MySQL is running
+. (Join-Path $moduleRoot "bin\Service-Helpers.ps1")
+if (-not (Assert-MySQLRunning)) {
+    Write-Error2 "Cannot proceed without MySQL running"
+    exit
+}
+
 # Test connection
 Write-Info "Testing MySQL connection..."
 
