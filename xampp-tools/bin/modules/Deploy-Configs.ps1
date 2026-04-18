@@ -151,7 +151,8 @@ if ($failed -gt 0) {
     Write-Warning2 "$failed config(s) failed"
 }
 
-# Post-deploy: config test + optional restart
+# Post-deploy: ensure SSL certs, then config test + optional restart
 . (Join-Path $moduleRoot "bin\Service-Helpers.ps1")
+Invoke-EnsureSSLCerts
 Invoke-PostDeployRestart | Out-Null
 Write-Host ""

@@ -186,6 +186,289 @@ Defer this migration until the shared docker-tools modules exist (Phase 3) so th
 
 ---
 
+## Phase 0.5 — Shared Utilities, Engines & Non-XAMPP Modules
+
+**Goal:** Extract generic engines and tool-agnostic modules out of xampp-tools so docker-tools can consume them from day one.
+
+**Why between Phase 0 and Phase 1:** docker-tools' `Build-Compose.ps1` (Phase 1) will consume the template engine, hosts helpers, env validator, and vhost validator. Building these first means zero duplication in Build-Compose.
+
+---
+
+### 0.5.1 Extract: `common/Template-Engine.ps1`
+
+Pull the `{{PLACEHOLDER}}` substitution logic and the `[name]...[/name]` named-block parser out of `xampp-tools/bin/modules/Build-Configs.ps1`.
+
+**Exported functions:**
+
+```powershell
+function Compile-Template {
+    param([string]$Content, [hashtable]$Vars)
+    foreach ($key in $Vars.Keys) {
+        $value = if ($null -eq $Vars[$key]) { "" } else { [string]$Vars[$key] }
+        $Content = $Content -replace "\{\{$key\}\}", [regex]::Escape($value).Replace('\\','\')
+    }
+    return $Content
+}
+
+function Invoke-TemplateBuild {
+    # Process a list of template→output mappings from config.json
+    param(
+        [string]$SourceDir,
+        [string]$DistDir,
+        [array]$Files,             # @(@{template=...; output=...; type=...}, ...)
+        [hashtable]$Vars,
+        [hashtable]$TypeHandlers   # @{ hosts = { param($content) ... } }
+    )
+    # Returns @{ Built = @(); Skipped = @(); UnreplacedPlaceholders = @() }
+}
+
+function Get-NamedBlock {
+    param([string]$TemplateContent, [string]$BlockName, [string]$Fallback = 'default')
+    if ($TemplateContent -match "(?s)\[$BlockName\](.*?)\[/$BlockName\]") {
+        return $matches[1].Trim()
+    }
+    if ($Fallback -and $TemplateContent -match "(?s)\[$Fallback\](.*?)\[/$Fallback\]") {
+        return $matches[1].Trim()
+    }
+    return ""
+}
+
+function Test-UnreplacedPlaceholders {
+    param([string]$Content)
+    $m = [regex]::Matches($Content, "\{\{([A-Z_][A-Z0-9_]*)\}\}")
+    return $m | ForEach-Object { $_.Groups[1].Value } | Select-Object -Unique
+}
+```
+
+**Update:** `xampp-tools/bin/modules/Build-Configs.ps1` dot-sources `common/Template-Engine.ps1` and calls these functions instead of inline logic. Zero behavior change.
+
+---
+
+### 0.5.2 Extract: `common/Hosts-Helpers.ps1`
+
+Pull managed-block hosts file writer out of xampp-tools' `Build-Configs.ps1` / `Deploy-VHosts.ps1`.
+
+**Exported functions:**
+
+```powershell
+function Update-HostsBlock {
+    param(
+        [string]$MarkerLabel,                          # e.g. "docker-tools" or "xampp-tools"
+        [string[]]$Entries,                            # raw lines, e.g. "127.0.0.1  site.local"
+        [string]$HostsPath = "$env:WinDir\System32\drivers\etc\hosts"
+    )
+    # Idempotently replace the block between marker comments, or append if absent.
+    # Requires admin — returns $false with warning otherwise.
+}
+
+function Remove-HostsBlock {
+    param([string]$MarkerLabel, [string]$HostsPath = "$env:WinDir\System32\drivers\etc\hosts")
+}
+
+function Get-HostsBlock {
+    param([string]$MarkerLabel, [string]$HostsPath = "$env:WinDir\System32\drivers\etc\hosts")
+    # Returns string[] of current entries or $null if no block
+}
+
+function Test-HostsEntriesPresent {
+    param([string[]]$RequiredEntries, [string]$HostsPath = "$env:WinDir\System32\drivers\etc\hosts")
+    # Returns array of missing entries
+}
+```
+
+**Marker format** used by both tools (distinct labels so entries don't conflict):
+```
+# --- {label} managed: do not edit ---
+127.0.0.1  site.local
+# --- /{label} managed ---
+```
+
+xampp-tools uses `MarkerLabel = "xampp-tools"`, docker-tools uses `MarkerLabel = "docker-tools"`. Both can have blocks present simultaneously — the active tool's entries take precedence at the same IP (identical entries are idempotent).
+
+---
+
+### 0.5.3 Extract: `common/Env-Validator.ps1`
+
+Pull required-env-key validation (scattered across xampp-tools modules).
+
+```powershell
+function Test-RequiredEnvKeys {
+    param([hashtable]$EnvVars, [string[]]$Required)
+    $missing = @()
+    foreach ($key in $Required) {
+        if (-not $EnvVars.ContainsKey($key) -or [string]::IsNullOrWhiteSpace($EnvVars[$key])) {
+            $missing += $key
+        }
+    }
+    return $missing
+}
+
+function Assert-EnvKeys {
+    # Calls Test-RequiredEnvKeys; Write-Error2 + exit 1 on any missing
+    param([hashtable]$EnvVars, [string[]]$Required)
+}
+```
+
+Used by `Startup-Check.ps1` in both tools with different required-key lists.
+
+---
+
+### 0.5.4 Extract: `common/Vhost-Validator.ps1`
+
+Pull vhost folder validation + duplicate domain detection out of xampp-tools' `Build-Configs.ps1`.
+
+```powershell
+function Test-VhostFolders {
+    param([array]$Vhosts, [string]$DocumentRoot)
+    # Returns array of missing folders with vhost metadata
+}
+
+function Find-DuplicateDomains {
+    param([array]$Vhosts, [string]$Extension)
+    # Returns array of @{ domain = ...; sites = @(...) }
+}
+
+function Get-VhostDomain {
+    param($Vhost, [string]$Extension)
+    if ($Vhost.domain) { return $Vhost.domain }
+    return "$($Vhost.folder)$Extension"
+}
+```
+
+---
+
+### 0.5.5 Extract: `common/Php-Versions.ps1`
+
+Move the PHP version registry (currently inside `xampp-tools/bin/modules/Switch-PHP.ps1`) — the **data** is tool-agnostic, only the install action differs.
+
+```powershell
+$script:PhpVersions = @{
+    "7.4" = @{ Version = "7.4.33"; DownloadUrl = "..."; DockerImageTag = "7.4-fpm"; ApacheModule = "php7apache2_4.dll" }
+    "8.0" = @{ Version = "8.0.30"; DownloadUrl = "..."; DockerImageTag = "8.0-fpm"; ApacheModule = "php8apache2_4.dll" }
+    "8.1" = @{ Version = "8.1.29"; DownloadUrl = "..."; DockerImageTag = "8.1-fpm"; ApacheModule = "php8apache2_4.dll" }
+    "8.2" = @{ Version = "8.2.25"; DownloadUrl = "..."; DockerImageTag = "8.2-fpm"; ApacheModule = "php8apache2_4.dll" }
+    "8.3" = @{ Version = "8.3.15"; DownloadUrl = "..."; DockerImageTag = "8.3-fpm"; ApacheModule = "php8apache2_4.dll" }
+    "8.4" = @{ Version = "8.4.2";  DownloadUrl = "..."; DockerImageTag = "8.4-fpm"; ApacheModule = "php8apache2_4.dll" }
+}
+
+function Get-PhpVersions   { return $script:PhpVersions }
+function Get-PhpVersionInfo { param([string]$Version) return $script:PhpVersions[$Version] }
+function Test-PhpVersionValid { param([string]$Version) return $script:PhpVersions.ContainsKey($Version) }
+```
+
+xampp-tools' `Switch-PHP.ps1` uses `DownloadUrl` + `ApacheModule`. docker-tools' `Switch-PHP.ps1` uses `DockerImageTag`. Same registry, different fields consumed.
+
+---
+
+### 0.5.6 Move: `common/modules/Install-Stripe-Package.ps1`
+
+Current file `xampp-tools/bin/modules/Install-Stripe-Package.ps1` installs Stripe CLI, Composer, or Node.js — **nothing XAMPP-specific**. Just dev-tool installers with SRP integration.
+
+Move as-is → `common/modules/Install-Stripe-Package.ps1`. Adds value to docker-tools immediately (same install flows work).
+
+Consider renaming to `Install-Dev-Tools.ps1` for clarity since Stripe is just one of the tools, but defer rename to avoid churn.
+
+---
+
+### 0.5.7 Move: `common/modules/Create-Shortcuts.ps1`
+
+Current file `xampp-tools/bin/modules/Create-Shortcuts.ps1` creates Windows desktop shortcuts. Generic Windows utility.
+
+**Add parameter:**
+```powershell
+param(
+    [string]$LauncherPath = $null,      # path to the tool's .ps1 entry point
+    [string]$LauncherName = "Dev Tools" # shortcut display name
+)
+```
+
+xampp-tools passes `Xampp-Tools.ps1` + "XAMPP Tools". docker-tools passes `Docker-Tools.ps1` + "Docker Tools". Both tools can register shortcuts.
+
+---
+
+### 0.5.8 Move: SRP module cluster
+
+Software Restriction Policy modules in `xampp-tools/bin/modules/.private/` are Windows OS features, not XAMPP-related:
+
+| Current | New location |
+|---------|--------------|
+| `Build-SoftwareRestrictionPolicy.ps1` | `common/modules/.private/Build-SoftwareRestrictionPolicy.ps1` |
+| `Deploy-SoftwareRestrictionPolicy.ps1` | `common/modules/.private/Deploy-SoftwareRestrictionPolicy.ps1` |
+| `Add-SiteToSrp.ps1` | `common/modules/.private/Add-SiteToSrp.ps1` |
+| `Add-SrpPath.ps1` | `common/modules/.private/Add-SrpPath.ps1` |
+| `Log-SrpIssue.ps1` | `common/modules/.private/Log-SrpIssue.ps1` |
+
+Move as-is. Any path references to `xampp-tools` internals should be updated to resolve via `$script:DevToolsRoot` or `$script:ToolRoot`. SRP template at `xampp-tools/config/optimized/templates/softwarepolicy/` stays in xampp-tools (currently only consumed by xampp-tools' build pipeline) — revisit in Phase 5 if docker-tools needs it too.
+
+---
+
+### 0.5.9 Move: `common/modules/Fix-VSCodeTerminal.ps1`
+
+Currently in `.private/`. VSCode terminal integration fix — not XAMPP-related. Move as-is.
+
+---
+
+### 0.5.10 Move: VSCode theme assets
+
+```
+xampp-tools/config/optimized/templates/vscode/  →  common/assets/vscode/
+```
+
+The `joehunter-dark.json` theme and `package.json` are personal, not XAMPP-related. Move the templates.
+
+**Deploy mapping impact:** xampp-tools' `config.json` currently has deployMappings for these — either:
+- **Option A:** keep the mapping entries in `xampp-tools/config/config.json` but update the source paths to point to `common/assets/vscode/`
+- **Option B:** move the VSCode deploy logic to a new `common/modules/Deploy-VSCode-Theme.ps1` that both tools can invoke independently
+
+Recommendation: Option B — the theme deploy has nothing to do with either tool's pipeline, it should be its own module.
+
+---
+
+### 0.5.11 Optional: Pipeline abstractions
+
+These are lower-priority — can be done later if module duplication becomes painful:
+
+```powershell
+# common/Pipeline-Runner.ps1
+function Invoke-StepPipeline {
+    param([array]$Steps)   # @(@{Name=...; Action=[scriptblock]}, ...)
+    $n = 1
+    foreach ($step in $Steps) {
+        Show-Step $n $step.Name "current"
+        try {
+            & $step.Action
+            Show-Step $n $step.Name "done"
+        } catch {
+            Show-Step $n $step.Name "error"
+            Write-Error2 $_.Exception.Message
+            if ($step.Required -ne $false) { throw }
+        }
+        $n++
+    }
+}
+
+function Invoke-Checklist {
+    param([array]$Checks)  # @(@{Name=...; Check=[scriptblock]; OnFail=...}, ...)
+    # Runs each check, collects results, reports pass/fail/warn per item
+}
+```
+
+Use in `Redeploy.ps1` (both tools) and `Startup-Check.ps1` (both tools). Defer this until after Phase 3 when both tools' pipelines exist and duplication is visible.
+
+---
+
+### 0.5.12 Validation
+
+- [ ] xampp-tools' `Build-Configs` now calls `Compile-Template` from `common/Template-Engine.ps1` — output byte-identical to before
+- [ ] xampp-tools' hosts file writes now go through `Update-HostsBlock` with label `"xampp-tools"`
+- [ ] xampp-tools' `Switch-PHP` reads version registry from `common/Php-Versions.ps1`
+- [ ] `Install-Stripe-Package`, `Create-Shortcuts`, `Fix-VSCodeTerminal`, SRP cluster all discoverable from the xampp-tools menu (via common/modules discovery)
+- [ ] VSCode theme deploy still works
+- [ ] All xampp-tools modules smoke-tested — no regressions
+- [ ] Commit: `refactor: extract shared engines and non-XAMPP modules to common/`
+
+---
+
 ## Phase 1 — Docker Tools Foundation
 
 **Goal:** `docker compose up` from `docker-tools/` starts nginx + php-fpm + mysql + pma, serving all sites from `vhosts.json`.
@@ -471,57 +754,57 @@ Show-MainMenu
 15. Exit 0
 ```
 
-**Helper functions inside the module:**
+**Dependencies from `common/`:**
 
 ```powershell
-function Compile-Template {
-    param([string]$Content, [hashtable]$Vars)
-    foreach ($key in $Vars.Keys) {
-        $Content = $Content -replace "\{\{$key\}\}", [regex]::Escape($Vars[$key]).Replace('\\','\')
-    }
-    return $Content
-}
-
-function Get-VhostBlock {
-    param([string]$TemplateContent, [string]$Type)
-    if ($TemplateContent -match "(?s)\[$Type\](.*?)\[/$Type\]") {
-        return $matches[1].Trim()
-    }
-    # Fallback
-    if ($TemplateContent -match "(?s)\[default\](.*?)\[/default\]") {
-        return $matches[1].Trim()
-    }
-    return ""
-}
-
-function Update-HostsFile {
-    param([array]$Sites, [string]$Extension)
-    $hostsPath = "$env:WinDir\System32\drivers\etc\hosts"
-    $marker = "# --- docker-tools managed ---"
-    $endMarker = "# --- /docker-tools managed ---"
-
-    if (-not (Test-Administrator)) {
-        Write-Warning2 "Not running as admin — skipping hosts file update"
-        return
-    }
-
-    $content = Get-Content $hostsPath -Raw
-    # Strip existing managed block
-    $content = [regex]::Replace($content, "(?s)$marker.*?$endMarker\r?\n?", "")
-
-    # Build new block
-    $lines = @($marker)
-    foreach ($site in $Sites) {
-        $domain = if ($site.domain) { $site.domain } else { $site.folder + $Extension }
-        $lines += "127.0.0.1  $domain"
-    }
-    $lines += $endMarker
-
-    $newBlock = ($lines -join "`r`n")
-    $content = $content.TrimEnd() + "`r`n`r`n" + $newBlock + "`r`n"
-    Set-Content -Path $hostsPath -Value $content -NoNewline
-}
+. (Join-Path $script:CommonDir "Template-Engine.ps1")   # Compile-Template, Get-NamedBlock, Invoke-TemplateBuild
+. (Join-Path $script:CommonDir "Hosts-Helpers.ps1")     # Update-HostsBlock
+. (Join-Path $script:CommonDir "Env-Validator.ps1")     # Assert-EnvKeys
+. (Join-Path $script:CommonDir "Vhost-Validator.ps1")   # Test-VhostFolders, Find-DuplicateDomains, Get-VhostDomain
 ```
+
+**Build-Compose flow using shared engines:**
+
+```powershell
+# Step 5: validate via shared helper
+$missingFolders = Test-VhostFolders -Vhosts $vhosts -DocumentRoot $wwwRoot
+foreach ($m in $missingFolders) { Write-Warning2 "Folder missing: $($m.folder)" }
+
+# Step 6: duplicate detection via shared helper
+$dupes = Find-DuplicateDomains -Vhosts $vhosts -Extension $envVars['VHOSTS_EXTENSION']
+foreach ($d in $dupes) { Write-Warning2 "Duplicate domain: $($d.domain)" }
+
+# Step 8: base template compilation via shared engine
+$buildResult = Invoke-TemplateBuild `
+    -SourceDir (Join-Path $toolRoot $config.templates.sourceDir) `
+    -DistDir   (Join-Path $toolRoot $config.templates.distDir) `
+    -Files     $config.templates.files `
+    -Vars      $envVars
+
+# Step 10: per-vhost nginx conf via shared engine
+$blocksTemplate = Get-Content (Join-Path $toolRoot $config.vhosts.blocksTemplate) -Raw
+foreach ($site in $vhosts) {
+    $block = Get-NamedBlock -TemplateContent $blocksTemplate -BlockName $site.type -Fallback 'default'
+    $vars = @{
+        FOLDER           = $site.folder
+        SERVER_NAME      = Get-VhostDomain -Vhost $site -Extension $envVars['VHOSTS_EXTENSION']
+        PORT             = if ($site.port) { $site.port } else { 8081 }
+        VHOSTS_EXTENSION = $envVars['VHOSTS_EXTENSION']
+    }
+    $conf = Compile-Template -Content $block -Vars $vars
+    $outPath = Join-Path $toolRoot "$($config.vhosts.outputDir)\$($site.folder).conf"
+    Set-Content -Path $outPath -Value $conf
+}
+
+# Step 13: hosts file via shared helper
+$entries = $vhosts | ForEach-Object {
+    $domain = Get-VhostDomain -Vhost $_ -Extension $envVars['VHOSTS_EXTENSION']
+    "127.0.0.1  $domain"
+}
+Update-HostsBlock -MarkerLabel "docker-tools" -Entries $entries
+```
+
+No duplicated utility code — everything reused from `common/`.
 
 ### 1.12 Module: `docker-tools/bin/modules/Docker-Controller.ps1`
 
@@ -910,29 +1193,139 @@ Commit: `feat: docker-tools extended — ssl, php, install, firewall, alias`
 
 When working through phases, build files in this order to minimize broken states:
 
-**Phase 0:**
-1. Create `common/` and `config/` directories
-2. Move `.env.example`, `.env`, `vhosts.json`, `signature-lg.txt`
-3. Create `common/Common.ps1` (split from xampp-tools)
+**Phase 0 — Core Migration:**
+1. Create `common/` and top-level `config/` directories
+2. Move `.env.example`, `.env`, `vhosts.json`, `signature-lg.txt` to their shared locations
+3. Create `common/Common.ps1` (split shared helpers out of xampp-tools/bin/Common.ps1)
 4. Move `common/Service-Helpers.ps1`
-5. Update `xampp-tools/Xampp-Tools.ps1` launcher
+5. Update `xampp-tools/Xampp-Tools.ps1` launcher to use new paths
 6. Update xampp-tools modules that referenced moved files
-7. Smoke test xampp-tools end-to-end
-8. Commit
+7. Smoke test every xampp-tools module end-to-end
+8. Commit: `refactor: extract shared core to dev-tools/common`
 
-**Phase 1:**
+**Phase 0.5 — Shared Utilities & Engines:**
+1. Create `common/Template-Engine.ps1` — move `{{PLACEHOLDER}}` + named-block logic out of `Build-Configs.ps1`
+2. Create `common/Hosts-Helpers.ps1` — move managed-block hosts writer
+3. Create `common/Env-Validator.ps1` — extract required-key validation
+4. Create `common/Vhost-Validator.ps1` — extract folder/duplicate validation
+5. Create `common/Php-Versions.ps1` — move version registry data out of `Switch-PHP.ps1`
+6. Move `Install-Stripe-Package.ps1` → `common/modules/`
+7. Move `Create-Shortcuts.ps1` → `common/modules/` + add `-LauncherPath` parameter
+8. Move SRP cluster → `common/modules/.private/`
+9. Move `Fix-VSCodeTerminal.ps1` → `common/modules/`
+10. Move VSCode theme templates → `common/assets/vscode/`; create `common/modules/Deploy-VSCode-Theme.ps1`
+11. Refactor xampp-tools' `Build-Configs.ps1` to consume shared engines (zero behaviour change — output byte-identical)
+12. Refactor xampp-tools' `Switch-PHP.ps1` to read registry from `common/Php-Versions.ps1`
+13. Smoke test xampp-tools — all modules still work
+14. Commit: `refactor: extract shared engines and non-XAMPP modules to common/`
+
+**Phase 1 — Docker Tools Foundation:**
 1. Create `docker-tools/` directory tree
 2. Write `docker-tools/.gitignore` and `Dockerfile`
 3. Write all templates (docker-compose, nginx, php, mysql)
 4. Write `docker-tools/config/config.json`
 5. Write `docker-tools/Docker-Tools.ps1` launcher
-6. Write `Build-Compose.ps1` — run it, inspect output
+6. Write `Build-Compose.ps1` — consuming Template-Engine, Hosts-Helpers, Vhost-Validator, Env-Validator
 7. Write `Docker-Controller.ps1` — test start/stop
-8. Write `Startup-Check.ps1` — test each check
+8. Write `Startup-Check.ps1` — uses `Assert-EnvKeys` from Env-Validator
 9. End-to-end: build → check → start → open browser
-10. Commit
+10. Commit: `feat: docker-tools foundation`
 
-**Phases 2-5** as described above.
+**Phase 2 — Database Operations:**
+1. Refactor shared DB modules (`Backup-MySQL`, `Restore-MySQL`, `Create-Database`, `Cleanup-MySQL`) with executor injection — move to `common/modules/`
+2. Wire xampp-tools default executors (local mysql.exe) for backwards compat
+3. Wire docker-tools executors in `Docker-Tools.ps1` (`docker exec`)
+4. Add PostgreSQL modules (`common/modules/Backup-Postgres.ps1`, `Restore-Postgres.ps1`) — docker-tools only
+5. Smoke test DB ops in both tools
+6. Commit
+
+**Phase 3 — Operations:**
+1. Move/refactor `Backup-Configs.ps1` → `common/modules/` with `-SourceDir`/`-TargetDir` params
+2. Move/refactor `View-Logs.ps1` → `common/modules/` with `$LogSource` script block
+3. Write `docker-tools/bin/modules/Redeploy.ps1` — docker pipeline
+4. Write `docker-tools/bin/modules/Kill-Services.ps1`
+5. Write `docker-tools/bin/modules/Services.ps1`
+6. Wire docker-tools' `$script:LogSource` in launcher
+7. Smoke test both tools
+8. Commit
+
+**Phase 4 — Extended:**
+1. Refactor `Firewall.ps1` → `common/modules/` with `-Ports` param
+2. Move `Alias.ps1` → `common/modules/`
+3. Move `Create-Ascii.ps1` → `common/modules/`
+4. Write `docker-tools/bin/modules/Setup-SSL.ps1` (mkcert)
+5. Write `docker-tools/bin/modules/Switch-PHP.ps1` (rebuild image, reads `common/Php-Versions.ps1`)
+6. Write `docker-tools/bin/modules/Install-Docker.ps1`
+7. Commit
+
+**Phase 5 — Polish:**
+1. Update `dev-tools.code-workspace` with Docker Tools folder entries
+2. Write/update root `README.md`
+3. Write `docker-tools/README.md` quickstart
+4. Remove now-dead `.env.example` and `vhosts.json` from `xampp-tools/` root
+5. Fresh-clone smoke test — both tools work from zero
+6. Commit
+
+---
+
+## Common Module Inventory (after all phases)
+
+For quick reference — what lives where when done:
+
+**`common/` (loaded by both tools):**
+```
+common/
+├── Common.ps1                  # header, logging, env loading, prompts, path helpers
+├── Service-Helpers.ps1         # Invoke-XamppStart/Stop, Invoke-DockerStart/Stop, Get-*Status
+├── Template-Engine.ps1         # Compile-Template, Get-NamedBlock, Invoke-TemplateBuild
+├── Hosts-Helpers.ps1           # Update-HostsBlock, Remove-HostsBlock, Test-HostsEntriesPresent
+├── Env-Validator.ps1           # Test-RequiredEnvKeys, Assert-EnvKeys
+├── Vhost-Validator.ps1         # Test-VhostFolders, Find-DuplicateDomains, Get-VhostDomain
+├── Php-Versions.ps1            # $script:PhpVersions registry
+├── Pipeline-Runner.ps1         # (optional, Phase 5) Invoke-StepPipeline, Invoke-Checklist
+├── assets/
+│   ├── signature-lg.txt
+│   └── vscode/
+│       ├── joehunter-dark.json
+│       └── package.json
+└── modules/
+    ├── Alias.ps1                       # shared
+    ├── Create-Ascii.ps1                # shared
+    ├── Firewall.ps1                    # shared (-Ports param)
+    ├── Backup-MySQL.ps1                # shared (executor injection)
+    ├── Restore-MySQL.ps1               # shared (executor injection)
+    ├── Create-Database.ps1             # shared (executor injection)
+    ├── Cleanup-MySQL.ps1               # shared (strategy param)
+    ├── View-Logs.ps1                   # shared ($LogSource)
+    ├── Backup-Configs.ps1              # shared (source/target params)
+    ├── Install-Stripe-Package.ps1      # shared
+    ├── Create-Shortcuts.ps1            # shared (-LauncherPath)
+    ├── Fix-VSCodeTerminal.ps1          # shared
+    ├── Deploy-VSCode-Theme.ps1         # shared
+    └── .private/
+        ├── Build-SoftwareRestrictionPolicy.ps1
+        ├── Deploy-SoftwareRestrictionPolicy.ps1
+        ├── Add-SiteToSrp.ps1
+        ├── Add-SrpPath.ps1
+        └── Log-SrpIssue.ps1
+```
+
+**`xampp-tools/bin/modules/` (xampp-only):**
+```
+Build-Configs.ps1, Deploy-Configs.ps1, Deploy-VHosts.ps1,
+Setup-MySQL.ps1, Setup-SSL.ps1 (OpenSSL), Switch-PHP.ps1 (install zip),
+Services.ps1, Kill-Services.ps1, Startup-Check.ps1, Redeploy.ps1,
+Xampp-Controller.ps1
+```
+
+**`docker-tools/bin/modules/` (docker-only):**
+```
+Build-Compose.ps1, Docker-Controller.ps1, Startup-Check.ps1,
+Setup-SSL.ps1 (mkcert), Switch-PHP.ps1 (rebuild image),
+Install-Docker.ps1, Services.ps1, Kill-Services.ps1, Redeploy.ps1
+```
+
+Note `Startup-Check.ps1`, `Services.ps1`, `Kill-Services.ps1`, `Redeploy.ps1`, `Setup-SSL.ps1`, `Switch-PHP.ps1` exist in BOTH tools' `bin/modules/` with the same `Cmd:` — discovery dedupe logic prefers local over shared.
 
 ---
 

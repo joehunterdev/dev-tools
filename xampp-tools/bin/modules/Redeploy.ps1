@@ -222,6 +222,10 @@ if (-not (Prompt-YesNo "  Continue with full redeploy?")) {
 $results = @()
 $allSuccess = $true
 
+# Step 0: Ensure SSL certs for all ssl:true vhosts
+Write-Info "Checking SSL certificates..."
+Invoke-EnsureSSLCerts
+
 # Step 1: Backup
 $result = Run-BackupConfigs
 $results += @{ Step = "Backup"; Success = $result.Success; Error = $result.Error }

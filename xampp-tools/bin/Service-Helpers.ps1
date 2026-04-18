@@ -155,6 +155,92 @@ function Open-XamppControlPanel {
     }
 }
 
+function Invoke-EnsureSSLCerts {
+    <#
+    Reads vhosts.json, generates any missing certs with OpenSSL,
+    auto-imports to Windows trust store (Chrome/Edge) and Firefox.
+    Silent — no prompts. Safe to call from any pipeline step.
+    #>
+    $_shConfig = Load-FilesConfig $_shModuleRoot
+    if (-not $_shConfig) { return }
+
+    $vhostsFile = Join-Path $_shModuleRoot $_shConfig.vhosts.sitesFile
+    if (-not (Test-Path $vhostsFile)) { return }
+
+    $_shEnvLocal = Load-EnvFile (Join-Path $_shModuleRoot ".env")
+    $domainExt  = if ($_shEnvLocal['VHOSTS_EXTENSION']) { $_shEnvLocal['VHOSTS_EXTENSION'] } else { ".localhost" }
+    $sslCrtDir  = Join-Path $script:XamppRoot "apache\conf\ssl.crt"
+    $sslKeyDir  = Join-Path $script:XamppRoot "apache\conf\ssl.key"
+    $opensslExe = Join-Path $script:XamppRoot "apache\bin\openssl.exe"
+    $opensslCnf = Join-Path $script:XamppRoot "apache\conf\openssl.cnf"
+
+    if (-not (Test-Path $opensslExe)) { return }
+
+    $vhostsData = Get-Content $vhostsFile -Raw | ConvertFrom-Json
+    $sites      = if ($vhostsData.vhosts) { $vhostsData.vhosts } else { @() }
+    $sslSites   = $sites | Where-Object { $_.ssl -eq $true }
+    if (-not $sslSites) { return }
+
+    $missing = @()
+    foreach ($site in $sslSites) {
+        $base   = $site.folder -replace '\.[^.]+$', ''
+        $domain = if ($site.domain) { $site.domain } elseif ($site.serverName) { $site.serverName } else { "$base$domainExt" }
+        $crt    = Join-Path $sslCrtDir "$domain-selfsigned.crt"
+        if (-not (Test-Path $crt)) { $missing += $domain }
+    }
+
+    if ($missing.Count -eq 0) { return }
+
+    Write-Info "Generating $($missing.Count) missing SSL cert(s)..."
+
+    if (-not (Test-Path $sslCrtDir)) { New-Item -ItemType Directory -Path $sslCrtDir -Force | Out-Null }
+    if (-not (Test-Path $sslKeyDir)) { New-Item -ItemType Directory -Path $sslKeyDir -Force | Out-Null }
+
+    $env:OPENSSL_CONF = $opensslCnf
+
+    foreach ($domain in $missing) {
+        $crt = Join-Path $sslCrtDir "$domain-selfsigned.crt"
+        $key = Join-Path $sslKeyDir "$domain-selfsigned.key"
+        $san = "subjectAltName=DNS:$domain,DNS:*.$domain"
+        $subj = "/CN=$domain/O=Local Dev/C=GB"
+
+        $out = & $opensslExe req -x509 -nodes -days 3650 -newkey rsa:2048 `
+            -keyout $key -out $crt `
+            -subj $subj -addext $san 2>&1
+
+        if (Test-Path $crt) {
+            Write-Success "  Cert: $domain"
+
+            # ── Windows trust store (Chrome / Edge) ──────────────────
+            try {
+                $x509  = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($crt)
+                $store = New-Object System.Security.Cryptography.X509Certificates.X509Store("Root", "CurrentUser")
+                $store.Open("ReadWrite")
+                $store.Add($x509)
+                $store.Close()
+                Write-Info "  Trusted: Windows store (Chrome/Edge)"
+            } catch {
+                Write-Warning2 "  Windows trust failed: $($_.Exception.Message)"
+            }
+
+            # ── Firefox (NSS certutil) ────────────────────────────────
+            $certutil = Get-Command certutil.exe -ErrorAction SilentlyContinue
+            $ffProfiles = Get-ChildItem "$env:APPDATA\Mozilla\Firefox\Profiles" -ErrorAction SilentlyContinue
+            if ($certutil -and $ffProfiles) {
+                foreach ($profile in $ffProfiles) {
+                    $db = Join-Path $profile.FullName "cert9.db"
+                    if (Test-Path $db) {
+                        & certutil.exe -A -n $domain -t "CT,," -i $crt -d "sql:$($profile.FullName)" 2>&1 | Out-Null
+                        Write-Info "  Trusted: Firefox ($($profile.Name))"
+                    }
+                }
+            }
+        } else {
+            Write-Warning2 "  Cert generation failed: $domain"
+        }
+    }
+}
+
 function Invoke-PostDeployRestart {
     <# Config test → show XAMPP GUI → stop → restart. Returns $true if all OK. #>
     Write-Info "Testing Apache config syntax..."
