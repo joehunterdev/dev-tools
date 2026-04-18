@@ -39,8 +39,6 @@
 		{
 			"name": "🔐 Software Policy",
 			"path": "../../Windows/SoftwarePolicy"
-<<<<<<< Updated upstream
-=======
 		},
 		{
 			"name": "📋 XAMPP Logs",
@@ -48,7 +46,6 @@
 		},
 		{
 			"path": "E:/www/joehunter.es"
->>>>>>> Stashed changes
 		}
 	],
 	"settings": {

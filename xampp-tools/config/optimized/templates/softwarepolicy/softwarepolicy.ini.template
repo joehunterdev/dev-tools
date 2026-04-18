@@ -42,3 +42,8 @@ C:\Users\{{USERNAME}}\AppData\Local\Programs\Microsoft VS Code\resources\app\nod
 
 ; ✅ Allow Custom User Paths
 {{USER_CUSTOM_PATHS}}
+
+; ✅ Allow global npm packages (concurrently, etc.)
+C:\Users\{{USERNAME}}\AppData\Roaming\npm=1
+C:\Users\{{USERNAME}}\AppData\Roaming\npm\*=1
+C:\Users\{{USERNAME}}\AppData\Roaming\npm\node_modules=1

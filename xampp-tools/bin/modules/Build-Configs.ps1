@@ -440,6 +440,17 @@ if (-not (Test-Path $script:TemplatesDir)) {
 # Load env
 $envData = Load-EnvFile $script:EnvFile
 
+# Inject php paths from config.json (structural, not user-configurable)
+if ($script:Config.php) {
+    $xamppRoot = if ($envData['XAMPP_ROOT_DIR']) { $envData['XAMPP_ROOT_DIR'] } else { "C:\xampp" }
+    if ($script:Config.php.curlCainfo -and -not $envData.ContainsKey('PHP_CURL_CAINFO')) {
+        $envData['PHP_CURL_CAINFO'] = $script:Config.php.curlCainfo -replace [regex]::Escape('{{XAMPP_ROOT_DIR}}'), $xamppRoot
+    }
+    if ($script:Config.php.opensslCafile -and -not $envData.ContainsKey('PHP_OPENSSL_CAFILE')) {
+        $envData['PHP_OPENSSL_CAFILE'] = $script:Config.php.opensslCafile -replace [regex]::Escape('{{XAMPP_ROOT_DIR}}'), $xamppRoot
+    }
+}
+
 Write-Host "  Templates: $($script:TemplatesDir)" -ForegroundColor Gray
 Write-Host "  Output:    $($script:DistDir)" -ForegroundColor Gray
 Write-Host ""

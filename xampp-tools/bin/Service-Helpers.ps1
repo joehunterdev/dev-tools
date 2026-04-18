@@ -143,42 +143,55 @@ function Test-ApacheConfigSyntax {
     }
 }
 
+function Open-XamppControlPanel {
+    <# Opens XAMPP Control Panel GUI if not already running #>
+    $already = Get-Process -Name "xampp-control" -ErrorAction SilentlyContinue
+    if ($already) { return }
+    $control = Join-Path $script:XamppRoot "xampp-control.exe"
+    if (Test-Path $control) {
+        Start-Process -FilePath $control
+        Start-Sleep -Seconds 2
+        Write-Info "XAMPP Control Panel opened"
+    }
+}
+
 function Invoke-PostDeployRestart {
-    <# Config test → optional restart. Returns $true if all OK. #>
+    <# Config test → show XAMPP GUI → stop → restart. Returns $true if all OK. #>
     Write-Info "Testing Apache config syntax..."
     $test = Test-ApacheConfigSyntax
     if (-not $test.Success) {
-        Write-Error2 "Apache config test FAILED \u2014 services NOT restarted"
+        Write-Error2 "Apache config test FAILED — services NOT restarted"
         Write-Host "    $($test.Output)" -ForegroundColor Red
         return $false
     }
 
     Write-Success "Apache config syntax OK"
 
+    # Open XAMPP Control Panel so user can see what's happening
+    Open-XamppControlPanel
+
     # Check what's currently running
     $status = Get-XamppStatus
+    Show-XamppStatus
+
     $anyRunning = $status.Apache -or $status.MySQL
 
     if ($anyRunning) {
-        Show-XamppStatus
-        if (Prompt-YesNo "  Restart running services?") {
-            Write-Info "Restarting..."
-            if ($status.Apache) {
-                Invoke-XamppStop -Silent
-            }
-            if ($status.MySQL) {
-                Invoke-XamppStop -Silent
-            }
+        if (Prompt-YesNo "  Stop running services, then restart?") {
+            Write-Info "Stopping services..."
+            Invoke-XamppStop
             Start-Sleep -Seconds 1
-            Invoke-XamppStart -Silent
+            Show-XamppStatus
+
+            Write-Info "Starting services..."
+            Invoke-XamppStart
             Show-XamppStatus
             Write-Success "Services restarted"
         }
     } else {
-        Write-Info "No services currently running"
         if (Prompt-YesNo "  Start services now?") {
-            Write-Info "Starting..."
-            Invoke-XamppStart -Silent
+            Write-Info "Starting services..."
+            Invoke-XamppStart
             Show-XamppStatus
             Write-Success "Services started"
         }
