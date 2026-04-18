@@ -7,7 +7,7 @@ function Show-Signature {
     
     # Use $script:BinDir set by Xampp-Tools.ps1, fallback to calculating from script location
     $binDir = if ($script:BinDir) { $script:BinDir } else { Split-Path -Parent $PSCommandPath }
-    $signaturePath = Join-Path $binDir "signature-lg.txt"
+    $signaturePath = Join-Path $binDir "assets\signature-lg.txt"
     
     if (Test-Path $signaturePath) {
         $lines = Get-Content $signaturePath
