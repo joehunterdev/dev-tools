@@ -43,9 +43,6 @@
 		{
 			"name": "📋 XAMPP Logs",
 			"path": "../../xampp/apache/logs"
-		},
-		{
-			"path": "E:/www/joehunter.es"
 		}
 	],
 	"settings": {

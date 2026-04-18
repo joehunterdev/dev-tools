@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "mcp__filesystem__directory_tree",
-      "mcp__filesystem__list_allowed_directories"
+      "mcp__filesystem__list_allowed_directories",
+      "mcp__filesystem__read_text_file",
+      "Bash(grep -E \"\\\\.ps1$\")",
+      "Bash(powershell -NoProfile -File \"C:\\\\dev-tools\\\\.docs\\\\gui\\\\preview-render.ps1\")",
+      "Bash(powershell -NoProfile -File \"C:\\\\dev-tools\\\\.docs\\\\gui\\\\preview.ps1\")"
     ]
   }
 }

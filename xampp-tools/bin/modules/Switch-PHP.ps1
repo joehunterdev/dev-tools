@@ -1,4 +1,4 @@
-# Name: PHP Version Manager
+﻿# Name: PHP Version Manager
 # Description: Switch, install, and manage PHP versions for XAMPP
 # Icon: 🐘
 # Cmd: install-php
@@ -36,61 +36,139 @@ $script:XamppConfPath    = Join-Path $script:ApacheExtraPath "httpd-xampp.conf"
 # PHP Version Registry
 $script:PhpVersions = [ordered]@{
     "7.4" = @{
-        Version    = "7.4.33"
-        ThreadSafe = $true
+        Version     = "7.4.33"
+        ThreadSafe  = $true
         DownloadUrl = "https://windows.php.net/downloads/releases/php-7.4.33-Win32-vc15-x64.zip"
-        TsDll      = "php7ts.dll"
-        Module     = "php7apache2_4.dll"
-        VsRuntime  = "vc15"
+        TsDll       = "php7ts.dll"
+        Module      = "php7apache2_4.dll"
+        VsRuntime   = "vc15"
+        # Visual C++ 2015-2019 Redistributable
+        VsRuntimeUrl = "https://aka.ms/vs/16/release/vc_redist.x64.exe"
+        Quirks      = @(
+            'opcache-dll'           # needs zend_extension=php_opcache.dll
+        )
     }
     "8.0" = @{
-        Version    = "8.0.30"
-        ThreadSafe = $true
+        Version     = "8.0.30"
+        ThreadSafe  = $true
         DownloadUrl = "https://windows.php.net/downloads/releases/php-8.0.30-Win32-vs16-x64.zip"
-        TsDll      = "php8ts.dll"
-        Module     = "php8apache2_4.dll"
-        VsRuntime  = "vs16"
+        TsDll       = "php8ts.dll"
+        Module      = "php8apache2_4.dll"
+        VsRuntime   = "vs16"
+        VsRuntimeUrl = "https://aka.ms/vs/16/release/vc_redist.x64.exe"
+        Quirks      = @(
+            'opcache-dll'
+        )
     }
     "8.1" = @{
-        Version    = "8.1.29"
-        ThreadSafe = $true
-        DownloadUrl = "https://windows.php.net/downloads/releases/php-8.1.29-Win32-vs16-x64.zip"
-        TsDll      = "php8ts.dll"
-        Module     = "php8apache2_4.dll"
-        VsRuntime  = "vs16"
+        Version     = "8.1.34"
+        ThreadSafe  = $true
+        DownloadUrl = "https://windows.php.net/downloads/releases/php-8.1.34-Win32-vs16-x64.zip"
+        TsDll       = "php8ts.dll"
+        Module      = "php8apache2_4.dll"
+        VsRuntime   = "vs16"
+        VsRuntimeUrl = "https://aka.ms/vs/16/release/vc_redist.x64.exe"
+        Quirks      = @(
+            'opcache-dll'
+        )
     }
     "8.2" = @{
-        Version    = "8.2.25"
-        ThreadSafe = $true
-        DownloadUrl = "https://windows.php.net/downloads/releases/php-8.2.25-Win32-vs16-x64.zip"
-        TsDll      = "php8ts.dll"
-        Module     = "php8apache2_4.dll"
-        VsRuntime  = "vs16"
+        Version     = "8.2.30"
+        ThreadSafe  = $true
+        DownloadUrl = "https://windows.php.net/downloads/releases/php-8.2.30-Win32-vs16-x64.zip"
+        TsDll       = "php8ts.dll"
+        Module      = "php8apache2_4.dll"
+        VsRuntime   = "vs16"
+        VsRuntimeUrl = "https://aka.ms/vs/16/release/vc_redist.x64.exe"
+        Quirks      = @(
+            'opcache-dll'
+        )
     }
     "8.3" = @{
-        Version    = "8.3.15"
-        ThreadSafe = $true
-        DownloadUrl = "https://windows.php.net/downloads/releases/php-8.3.15-Win32-vs16-x64.zip"
-        TsDll      = "php8ts.dll"
-        Module     = "php8apache2_4.dll"
-        VsRuntime  = "vs16"
+        Version     = "8.3.30"
+        ThreadSafe  = $true
+        DownloadUrl = "https://windows.php.net/downloads/releases/php-8.3.30-Win32-vs16-x64.zip"
+        TsDll       = "php8ts.dll"
+        Module      = "php8apache2_4.dll"
+        VsRuntime   = "vs16"
+        VsRuntimeUrl = "https://aka.ms/vs/16/release/vc_redist.x64.exe"
+        Quirks      = @(
+            'opcache-dll'
+        )
     }
     "8.4" = @{
-        Version    = "8.4.2"
-        ThreadSafe = $true
-        DownloadUrl = "https://windows.php.net/downloads/releases/php-8.4.2-Win32-vs17-x64.zip"
-        TsDll      = "php8ts.dll"
-        Module     = "php8apache2_4.dll"
-        VsRuntime  = "vs17"
+        Version     = "8.4.20"
+        ThreadSafe  = $true
+        DownloadUrl = "https://windows.php.net/downloads/releases/php-8.4.20-Win32-vs17-x64.zip"
+        TsDll       = "php8ts.dll"
+        Module      = "php8apache2_4.dll"
+        VsRuntime   = "vs17"
+        # Visual C++ 2022 Redistributable
+        VsRuntimeUrl = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+        Quirks      = @(
+            'opcache-builtin'       # statically compiled, no DLL — comment out zend_extension=opcache
+        )
     }
     "8.5" = @{
-        Version    = "8.5.0"
-        ThreadSafe = $true
-        DownloadUrl = "https://windows.php.net/downloads/releases/php-8.5.0-Win32-vs17-x64.zip"
-        TsDll      = "php8ts.dll"
-        Module     = "php8apache2_4.dll"
-        VsRuntime  = "vs17"
+        Version     = "8.5.5"
+        ThreadSafe  = $true
+        DownloadUrl = "https://windows.php.net/downloads/releases/php-8.5.5-Win32-vs17-x64.zip"
+        TsDll       = "php8ts.dll"
+        Module      = "php8apache2_4.dll"
+        VsRuntime   = "vs17"
+        VsRuntimeUrl = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+        Quirks      = @(
+            'opcache-builtin'
+        )
     }
+}
+
+# ============================================================
+# LIVE URL RESOLVER
+# (Get-WindowsPhpConfig / Show-WindowsPhpConfig are in Common.ps1)
+# ============================================================
+
+function Resolve-PhpDownloadUrl {
+    <#
+    Queries the windows.php.net releases.json API for the latest Thread Safe zip
+    matching the requested major.minor version and system arch.
+    Returns @{ Url; Version; Sha256 } or $null on failure.
+    #>
+    param(
+        [string]$MajorMinor,   # e.g. "8.3"
+        [string]$Arch = "x64"
+    )
+
+    try {
+        $json = Invoke-WebRequest 'https://windows.php.net/downloads/releases/releases.json' `
+            -UseBasicParsing -TimeoutSec 15 | ConvertFrom-Json
+
+        $verData = $json.$MajorMinor
+        if (-not $verData) {
+            Write-Warning2 "No releases.json entry for PHP $MajorMinor"
+            return $null
+        }
+
+        # Try runtimes in priority order (newest first)
+        foreach ($rt in @('vs17', 'vs16', 'vc15')) {
+            $key   = "ts-$rt-$Arch"
+            $entry = $verData.$key
+            if ($entry -and $entry.zip -and $entry.zip.path) {
+                $file    = $entry.zip.path
+                $sha256  = $entry.zip.sha256
+                $version = if ($file -match 'php-(\d+\.\d+\.\d+)-') { $matches[1] } else { $MajorMinor }
+                return @{
+                    Url     = "https://windows.php.net/downloads/releases/$file"
+                    Version = $version
+                    Sha256  = $sha256
+                }
+            }
+        }
+        Write-Warning2 "No TS $Arch build found for PHP $MajorMinor in releases.json"
+    } catch {
+        Write-Warning2 "Could not fetch releases.json: $($_.Exception.Message)"
+    }
+    return $null
 }
 
 # ============================================================
@@ -126,7 +204,7 @@ function Show-PhpStatus {
     Write-Host "  🐘 PHP Version Manager" -ForegroundColor Cyan
     Write-Host "  ─────────────────────────────────────────────────────────" -ForegroundColor DarkGray
     Write-Host ""
-    Write-Host "  Active : PHP $current  ($($script:XamppRoot)\php)" -ForegroundColor White
+    Write-Host "  Active : PHP $current  ($($script:XamppRoot + '\php'))" -ForegroundColor White
     Write-Host ""
     Write-Host "  Available versions:" -ForegroundColor White
     Write-Host ""
@@ -184,13 +262,39 @@ function Install-PhpVersion {
 
     $zipPath = "$env:TEMP\php-$verClean.zip"
 
-    Show-Step "1" "Downloading PHP $($phpConfig.Version)" "current"
+    # Resolve live URL first, fall back to registry URL
+    $sysCfg  = Get-WindowsPhpConfig
+    $resolved = Resolve-PhpDownloadUrl -MajorMinor $Version -Arch $sysCfg.Arch
+    if ($resolved) {
+        $downloadUrl = $resolved.Url
+        $displayVer  = $resolved.Version
+        $sha256      = $resolved.Sha256
+    } else {
+        $downloadUrl = $phpConfig.DownloadUrl
+        $displayVer  = if ($downloadUrl -match 'php-(\d+\.\d+\.\d+)-') { $matches[1] } else { $phpConfig.Version }
+        $sha256      = $null
+    }
+
+    Show-Step "1" "Downloading PHP $displayVer ($($sysCfg.Arch))" "current"
     try {
-        Invoke-WebRequest -Uri $phpConfig.DownloadUrl -OutFile $zipPath -UseBasicParsing
-        Show-Step "1" "Downloading PHP $($phpConfig.Version)" "done"
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath -UseBasicParsing
+        # Verify SHA256 if available
+        if ($sha256) {
+            $actual = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash
+            if ($actual -ne $sha256.ToUpper()) {
+                Remove-Item $zipPath -Force -ErrorAction SilentlyContinue
+                Show-Step "1" "Downloading PHP $displayVer" "error"
+                Write-Error2 "SHA256 mismatch — download may be corrupt."
+                Write-Host "    Expected: $sha256" -ForegroundColor DarkGray
+                Write-Host "    Actual  : $actual" -ForegroundColor DarkGray
+                return $false
+            }
+        }
+        Show-Step "1" "Downloading PHP $displayVer ($($sysCfg.Arch))" "done"
     } catch {
-        Show-Step "1" "Downloading PHP $($phpConfig.Version)" "error"
+        Show-Step "1" "Downloading PHP $displayVer" "error"
         Write-Error2 "Download failed: $($_.Exception.Message)"
+        Write-Host "    URL: $downloadUrl" -ForegroundColor DarkGray
         return $false
     }
 
@@ -312,25 +416,42 @@ function Migrate-PhpIni {
     $oldPhpIni = Join-Path $BackupDir "php.ini"
 
     Show-Step "I1" "Migrating php.ini" "current"
+    $phpDir = Join-Path $script:XamppRoot "php"
 
-    # Prefer managed template from build pipeline
+    # ── Priority 1: per-version curated config in config/php/php-X.Y.ini ──
+    $versionConfig = Join-Path $moduleRoot "config\php\php-$NewVersion.ini"
+    if (Test-Path $versionConfig) {
+        $content = Get-Content $versionConfig -Raw
+        $content = Repair-PhpIni -PhpIniContent $content -PhpVersion $NewVersion -PhpDir $phpDir
+        Set-Content $newPhpIni $content -Encoding UTF8
+        Show-Step "I1" "php.ini from version config (config/php/php-$NewVersion.ini)" "done"
+        return $true
+    }
+
+    # ── Priority 2: managed template from build pipeline ──────────────────
     $templateDist = Join-Path $moduleRoot "config\optimized\dist\php\php.ini"
     if (Test-Path $templateDist) {
-        Copy-Item $templateDist $newPhpIni -Force
+        $content = Get-Content $templateDist -Raw
+        $content = Repair-PhpIni -PhpIniContent $content -PhpVersion $NewVersion -PhpDir $phpDir
+        Set-Content $newPhpIni $content -Encoding UTF8
         Show-Step "I1" "php.ini from managed template" "done"
         return $true
     }
 
-    # Fallback: migrate critical values from old ini
+    # ── Priority 3: migrate critical values from old ini ──────────────────
     if (-not (Test-Path $oldPhpIni)) {
-        $devIni = Join-Path $script:XamppRoot "php\php.ini-development"
-        if (Test-Path $devIni) { Copy-Item $devIni $newPhpIni -Force }
-        Show-Step "I1" "php.ini-development used (no old ini found)" "done"
+        $devIni = Join-Path $phpDir "php.ini-development"
+        if (Test-Path $devIni) {
+            $content = Get-Content $devIni -Raw
+            $content = Repair-PhpIni -PhpIniContent $content -PhpVersion $NewVersion -PhpDir $phpDir
+            Set-Content $newPhpIni $content -Encoding UTF8
+        }
+        Show-Step "I1" "php.ini-development used (no version config found)" "done"
         return $true
     }
 
     $oldIni    = Get-Content $oldPhpIni -Raw
-    $newInySrc = Join-Path $script:XamppRoot "php\php.ini-development"
+    $newInySrc = Join-Path $phpDir "php.ini-development"
     $newIni    = if (Test-Path $newInySrc) { Get-Content $newInySrc -Raw } else { $oldIni }
 
     # Key settings to carry forward
@@ -352,9 +473,88 @@ function Migrate-PhpIni {
         $newIni = $newIni -replace ";extension=$([regex]::Escape($ext))\b", "extension=$ext"
     }
 
+    $newIni = Repair-PhpIni -PhpIniContent $newIni -PhpVersion $NewVersion -PhpDir $phpDir
     Set-Content -Path $newPhpIni -Value $newIni -Encoding UTF8
-    Show-Step "I1" "php.ini migrated from backup" "done"
+    Show-Step "I1" "php.ini migrated from backup (no version config found)" "done"
     return $true
+}
+
+function Repair-PhpIni {
+    <#
+    Post-processes a php.ini string using the Quirks declared in the version registry,
+    plus universal sanity checks (browscap path, missing extension DLLs).
+    Returns the corrected content string.
+
+    Recognised Quirks:
+      'opcache-builtin'  — OPcache is statically compiled (PHP 8.4+); comment out zend_extension=opcache
+      'opcache-dll'      — OPcache loads from php_opcache.dll; ensure the DLL exists before enabling
+    #>
+    param(
+        [string]$PhpIniContent,
+        [string]$PhpVersion,   # major.minor key e.g. "8.5"
+        [string]$PhpDir        # e.g. C:\xampp\php
+    )
+
+    $quirks = if ($script:PhpVersions[$PhpVersion]) { $script:PhpVersions[$PhpVersion].Quirks } else { @() }
+
+    # ── Quirk: opcache-builtin ─────────────────────────────────────────────
+    # OPcache is compiled into the binary — no DLL. Loading it from ini crashes PHP.
+    if ($quirks -contains 'opcache-builtin') {
+        $PhpIniContent = $PhpIniContent.Replace(
+            'zend_extension=opcache',
+            '; zend_extension=opcache  ; built-in on this PHP version'
+        )
+        # Also handle explicit dll path: zend_extension="...\php_opcache.dll"
+        $PhpIniContent = $PhpIniContent -replace
+            '(?m)^(zend_extension\s*=\s*"[^"]*opcache[^"]*")',
+            '; $1  ; built-in on this PHP version'
+    }
+
+    # ── Quirk: opcache-dll ────────────────────────────────────────────────
+    # OPcache ships as php_opcache.dll. Ensure zend_extension points to the DLL name,
+    # not the bare 'opcache' alias (which only works on some systems).
+    if ($quirks -contains 'opcache-dll') {
+        $opcacheDll = Join-Path $PhpDir "ext\php_opcache.dll"
+        if (Test-Path $opcacheDll) {
+            # Normalise bare 'opcache' alias → explicit dll filename
+            $PhpIniContent = $PhpIniContent -replace
+                '(?m)^zend_extension=opcache$',
+                'zend_extension=php_opcache.dll'
+        } else {
+            # DLL missing — comment it out rather than crash
+            $PhpIniContent = $PhpIniContent -replace
+                '(?m)^(zend_extension\s*=\s*(opcache|php_opcache\.dll|"[^"]*opcache[^"]*"))$',
+                '; $1  ; php_opcache.dll not found in ext folder'
+        }
+    }
+
+    # ── Universal: comment out browscap if the file doesn't exist ─────────
+    if ($PhpIniContent -match '(?m)^browscap\s*=\s*"([^"]+)"') {
+        $browscapPath = $matches[1]
+        if (-not (Test-Path $browscapPath)) {
+            $PhpIniContent = $PhpIniContent.Replace(
+                "browscap=`"$browscapPath`"",
+                "; browscap=`"$browscapPath`"  ; file not present"
+            )
+        }
+    }
+
+    # ── Universal: comment out any extension= whose DLL is missing ────────
+    $extDir = Join-Path $PhpDir "ext"
+    $PhpIniContent = [regex]::Replace($PhpIniContent, '(?m)^extension=([^\s;]+)', {
+        param($m)
+        $ext = $m.Groups[1].Value.Trim()
+        # Resolve bare name (e.g. "curl") to "php_curl.dll"
+        $dll = if ($ext -match '\.dll$') { $ext } else { "php_$ext.dll" }
+        $dllPath = Join-Path $extDir $dll
+        if (-not (Test-Path $dllPath)) {
+            "; extension=$ext  ; $dll not found in ext folder"
+        } else {
+            $m.Value
+        }
+    })
+
+    return $PhpIniContent
 }
 
 function Restore-PhpBackup {
@@ -396,8 +596,12 @@ function Verify-PhpVersion {
         }
         Write-Warning2 "Expected PHP $ExpectedVersion, got: $($out.Trim())"
         if ($out -match "vcruntime|VCRUNTIME") {
-            Write-Warning2 "Missing Visual C++ Redistributable ($($script:PhpVersions[$ExpectedVersion.Substring(0,3)].VsRuntime))"
-            Write-Host "    Download: https://aka.ms/vs/17/release/vc_redist.x64.exe" -ForegroundColor Gray
+            $majorMinor = $ExpectedVersion.Substring(0, 3)
+            $cfg        = $script:PhpVersions[$majorMinor]
+            $runtime    = if ($cfg) { $cfg.VsRuntime }    else { 'unknown' }
+            $dlUrl      = if ($cfg) { $cfg.VsRuntimeUrl } else { 'https://aka.ms/vs/17/release/vc_redist.x64.exe' }
+            Write-Warning2 "Missing Visual C++ Redistributable ($runtime)"
+            Write-Host "    Download: $dlUrl" -ForegroundColor Gray
         }
         return $false
     } catch {
@@ -432,73 +636,128 @@ function Switch-ActivePhp {
     Write-Host "  ─────────────────────────────────────────────────────────" -ForegroundColor DarkGray
     Write-Host ""
 
-    # Ensure side-folder exists
+    if ($currentShort -eq $Version) {
+        Write-Info "PHP $Version is already active — nothing to do."
+        return $false
+    }
+
+    # ── Step 1: Ensure side-folder is downloaded ─────────────
+    Show-Step "1" "Checking PHP $Version side-folder" "current"
     if (-not (Test-Path $sideDir)) {
-        Write-Info "PHP $Version not downloaded yet — installing side-folder first..."
+        Show-Step "1" "PHP $Version not downloaded yet — fetching now" "current"
         if (-not (Install-PhpVersion -Version $Version)) {
+            Show-Step "1" "Download failed" "error"
             Write-Error2 "Cannot switch — download failed"
             return $false
         }
+    } else {
+        Show-Step "1" "PHP $Version side-folder found at $sideDir" "done"
     }
 
-    # Pre-flight
+    # ── Step 2: Open XAMPP Control Panel + show current state ─
+    Show-Step "2" "Opening XAMPP Control Panel" "current"
     Open-XamppControlPanel
+    Show-Step "2" "XAMPP Control Panel" "done"
+    Write-Host ""
     Show-XamppStatus
-    if (-not (Prompt-YesNo "  Stop services and switch to PHP $Version?")) {
+
+    if (-not (Prompt-YesNo "  Stop services, backup PHP $currentShort, then switch to PHP $Version?")) {
         Write-Warning2 "Cancelled."
         return $false
     }
 
-    Write-Info "Stopping services..."
+    # ── Step 3: Stop services ─────────────────────────────────
+    Show-Step "3" "Stopping Apache + MySQL" "current"
     Invoke-XamppStop
+    $stopped = Get-XamppStatus
+    if ($stopped.Apache -or $stopped.MySQL) {
+        Show-Step "3" "Services may still be running — continuing anyway" "error"
+    } else {
+        Show-Step "3" "Apache + MySQL stopped" "done"
+    }
     Show-XamppStatus
 
-    # Save rollback copy of conf
+    # ── Step 4: Backup current PHP folder ─────────────────────
+    # This MUST happen before any folder changes
+    $backupDir = Backup-CurrentPhp -CurrentVersion $currentShort
+    if (-not $backupDir) {
+        Write-Error2 "Backup failed — aborting switch to protect current installation"
+        Show-Step "4" "Backup FAILED — starting services again" "error"
+        Invoke-XamppStart
+        Show-XamppStatus
+        return $false
+    }
+    Write-Host "  Backup at: $backupDir" -ForegroundColor DarkGray
+
+    # Save rollback copy of Apache conf
     Copy-Item $script:XamppConfPath "$($script:XamppConfPath).rollback" -Force -ErrorAction SilentlyContinue
 
-    # Backup current php folder
-    $backupDir = Backup-CurrentPhp -CurrentVersion $currentShort
-    if (-not $backupDir) { Invoke-XamppStart; return $false }
-
-    # Swap folders
+    # ── Step 5: Swap PHP folders ──────────────────────────────
     if (-not (Swap-PhpFolders -NewVersion $Version -OldVersion $currentShort)) {
+        Write-Error2 "Folder swap failed — restoring from backup"
         Restore-PhpBackup -BackupDir $backupDir -OldVersion $currentShort
         Invoke-XamppStart
+        Show-XamppStatus
         return $false
     }
 
-    # Patch Apache conf
+    # ── Step 6: Patch httpd-xampp.conf ────────────────────────
     Patch-ApachePhpConfig -NewVersion $Version | Out-Null
 
-    # Migrate php.ini
+    # ── Step 7: Migrate php.ini ───────────────────────────────
     Migrate-PhpIni -NewVersion $Version -BackupDir $backupDir
 
-    # Validate Apache config
-    Write-Info "Testing Apache config syntax..."
+    # ── Step 8: Validate Apache config before starting ────────
+    Show-Step "8" "Testing Apache config syntax" "current"
     $test = Test-ApacheConfigSyntax
     if (-not $test.Success) {
-        Write-Error2 "Apache config FAILED — rolling back"
+        Show-Step "8" "Apache config FAILED — rolling back" "error"
         Write-Host "    $($test.Output)" -ForegroundColor Red
         Restore-PhpBackup -BackupDir $backupDir -OldVersion $currentShort
         Invoke-XamppStart
+        Show-XamppStatus
         return $false
     }
-    Write-Success "Apache config OK"
+    Show-Step "8" "Apache config syntax OK" "done"
 
-    # Start and verify
-    Write-Info "Starting services..."
+    # ── Step 9: Start services ────────────────────────────────
+    Show-Step "9" "Starting Apache + MySQL" "current"
     Invoke-XamppStart
+    $started = Get-XamppStatus
+    if ($started.Apache -and $started.MySQL) {
+        Show-Step "9" "Apache + MySQL running" "done"
+    } else {
+        Show-Step "9" "One or more services did not start" "error"
+    }
     Show-XamppStatus
-    Verify-PhpVersion -ExpectedVersion $phpConfig.Version | Out-Null
 
-    # Update .env
+    # ── Step 10: Verify PHP version ───────────────────────────
+    Show-Step "10" "Verifying PHP version" "current"
+    # Resolve actual installed version from the downloaded zip name
+    $resolvedVer = if ($sideDir) {
+        $phpExeSide = Join-Path $sideDir "php.exe"
+        if (Test-Path $phpExeSide) {
+            $v = & $phpExeSide -v 2>&1 | Select-Object -First 1 | Out-String
+            if ($v -match "PHP (\d+\.\d+\.\d+)") { $matches[1] } else { $phpConfig.Version }
+        } else { $phpConfig.Version }
+    } else { $phpConfig.Version }
+
+    if (Verify-PhpVersion -ExpectedVersion $resolvedVer) {
+        Show-Step "10" "PHP $resolvedVer confirmed" "done"
+    } else {
+        Show-Step "10" "Version mismatch — check VC++ runtimes" "error"
+    }
+
+    # ── Step 11: Update .env ──────────────────────────────────
     Update-EnvPhpVersion -NewVersion $Version
 
-    # Cleanup
+    # Cleanup rollback conf — switch succeeded
     Remove-Item "$($script:XamppConfPath).rollback" -Force -ErrorAction SilentlyContinue
 
     Write-Host ""
-    Write-Success "Successfully switched to PHP $Version"
+    Write-Host "  ─────────────────────────────────────────────────────────" -ForegroundColor DarkGray
+    Write-Success "Switched to PHP $Version  |  Backup kept at: $(Split-Path $backupDir -Leaf)"
+    Write-Host ""
     return $true
 }
 
@@ -519,6 +778,92 @@ function Remove-PhpSideFolder {
 }
 
 # ============================================================
+# EXPORT VERSION CONFIG
+# ============================================================
+
+function Export-PhpVersionConfig {
+    <#
+    Captures the current active php.ini into config/php/php-X.Y.ini,
+    stripping machine-specific absolute paths so the file is portable
+    and can be committed to source control.
+
+    Substitutions made:
+      C:\xampp\...   →  placeholder tokens e.g. {{XAMPP_ROOT}}
+      C:\xampp\tmp   →  {{XAMPP_TMP}}
+    Callers can update their preferred timezone / mail settings before committing.
+    #>
+    param(
+        [string]$Version  # major.minor, e.g. "8.5"
+    )
+
+    $activeIni  = Join-Path $script:XamppRoot "php\php.ini"
+    $destPath   = Join-Path $moduleRoot "config\php\php-$Version.ini"
+    $xamppRoot  = $script:XamppRoot.TrimEnd('\')
+
+    if (-not (Test-Path $activeIni)) {
+        Write-Error2 "Active php.ini not found at $activeIni"
+        return $false
+    }
+
+    Write-Host ""
+    Write-Host "  Exporting PHP $Version config..." -ForegroundColor Cyan
+
+    $content = Get-Content $activeIni -Raw
+
+    # ─ Strip duplicate blank lines (tidy up migrated noise) ─────────────────────
+    $content = $content -replace '(\r?\n){3,}', "`r`n`r`n"
+
+    # ─ Normalise XAMPP paths → portable tokens ────────────────────────────
+    # Order matters: longest/most specific first
+    $replacements = [ordered]@{
+        "$xamppRoot\php\logs\php_error_log"   = 'C:\xampp\php\logs\php_error_log'
+        "$xamppRoot\php\extras\ssl\cacert.pem" = 'C:\xampp\php\extras\ssl\cacert.pem'
+        "$xamppRoot\php\extras\browscap.ini"  = 'C:\xampp\php\extras\browscap.ini'
+        "$xamppRoot\php\PEAR"                  = 'C:\xampp\php\PEAR'
+        "$xamppRoot\php\ext"                   = 'C:\xampp\php\ext'
+        "$xamppRoot\tmp"                       = 'C:\xampp\tmp'
+        $xamppRoot                             = 'C:\xampp'
+    }
+    # Also handle forward-slash variants
+    $fwd = $xamppRoot -replace '\\', '/'
+    $replacements["$fwd/php/logs/php_error_log"]    = 'C:\xampp\php\logs\php_error_log'
+    $replacements["$fwd/php/extras/ssl/cacert.pem"] = 'C:\xampp\php\extras\ssl\cacert.pem'
+    $replacements["$fwd/php/ext"]                   = 'C:\xampp\php\ext'
+    $replacements["$fwd/tmp"]                        = 'C:\xampp\tmp'
+    $replacements[$fwd]                              = 'C:\xampp'
+
+    foreach ($from in $replacements.Keys) {
+        if ($from) { $content = $content.Replace($from, $replacements[$from]) }
+    }
+
+    # ─ Prepend header ───────────────────────────────────────────────────────
+    $quirks  = if ($script:PhpVersions[$Version]) { ($script:PhpVersions[$Version].Quirks -join ', ') } else { 'none' }
+    $runtime = if ($script:PhpVersions[$Version]) { $script:PhpVersions[$Version].VsRuntime } else { 'unknown' }
+    $header  = @"
+; ============================================================
+; PHP $Version — XAMPP Dev Configuration
+; Exported : $(Get-Date -Format 'yyyy-MM-dd HH:mm')
+; Runtime  : $runtime
+; Quirks   : $quirks
+; Paths use C:\xampp as the canonical XAMPP root.
+; Update date.timezone and mail settings for your environment.
+; ============================================================
+
+"@
+    # Remove any existing auto-generated header block at the top
+    $content = $content -replace '(?s)^;\s*={10,}.*?;\s*={10,}\r?\n+', ''
+    $content = $header + $content.TrimStart()
+
+    New-Item -ItemType Directory -Path (Split-Path $destPath) -Force | Out-Null
+    Set-Content -Path $destPath -Value $content -Encoding UTF8
+
+    Write-Success "Exported → $destPath"
+    Write-Host "  Review and commit this file to lock in your PHP $Version settings." -ForegroundColor DarkGray
+    Write-Host ""
+    return $true
+}
+
+# ============================================================
 # MAIN MENU
 # ============================================================
 
@@ -532,6 +877,8 @@ do {
     Write-Host "    2) Install PHP to side-folder   (download only)" -ForegroundColor Gray
     Write-Host "    3) Remove side-folder version" -ForegroundColor Gray
     Write-Host "    4) Rebuild php.ini from template" -ForegroundColor Gray
+    Write-Host "    5) Show system config            (arch, VC runtimes)" -ForegroundColor Gray
+    Write-Host "    6) Export active php.ini to version config" -ForegroundColor Gray
     Write-Host "    0) Back" -ForegroundColor DarkGray
     Write-Host "  ─────────────────────────────────────────────────────────" -ForegroundColor DarkGray
     Write-Host ""
@@ -583,6 +930,17 @@ do {
                 Copy-Item $templateDist $activePhpIni -Force
                 Write-Success "php.ini rebuilt from template"
             }
+        }
+
+        '5' { Show-WindowsPhpConfig }
+
+        '6' {
+            $activeShort = if ((Get-CurrentPhpVersion) -match "^(\d+\.\d+)") { $matches[1] } else { $script:ActivePhpVersion }
+            Write-Host "  Export active php.ini for PHP $activeShort to config/php/php-$activeShort.ini" -ForegroundColor White
+            if (Test-Path (Join-Path $moduleRoot "config\php\php-$activeShort.ini")) {
+                if (-not (Prompt-YesNo "  File already exists — overwrite?")) { break }
+            }
+            Export-PhpVersionConfig -Version $activeShort | Out-Null
         }
 
         '0' { break }

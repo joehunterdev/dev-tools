@@ -151,7 +151,55 @@ Result: $Result
 "@
     
     Add-Content -Path $logPath -Value $logEntry -Force
-    
+
     return $logPath
 }
 
+# ============================================================
+# SYSTEM DETECTION
+# ============================================================
+
+function Get-WindowsPhpConfig {
+    <# Detects OS arch, build, and installed VS C++ runtimes. Used by Build-Configs and Switch-PHP. #>
+    $arch = if ([System.Environment]::Is64BitOperatingSystem) {
+        if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64' } else { 'x64' }
+    } else { 'x86' }
+
+    $os = Get-CimInstance Win32_OperatingSystem -ErrorAction SilentlyContinue
+    $osCaption = if ($os) { $os.Caption } else { "Unknown Windows" }
+    $osBuild   = if ($os) { $os.BuildNumber } else { "?" }
+
+    $redistributables = Get-ChildItem 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall',
+                                      'HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall' `
+                        -ErrorAction SilentlyContinue |
+                        Get-ItemProperty -ErrorAction SilentlyContinue |
+                        Where-Object { $_.DisplayName -match 'Visual C\+\+ \d{4}.*(Redistributable|Runtime)' } |
+                        Select-Object DisplayName, DisplayVersion
+
+    $runtimes = @()
+    foreach ($r in $redistributables) {
+        if ($r.DisplayName -match '2015|2017|2019') { $runtimes += 'vc15'; $runtimes += 'vs16' }
+        if ($r.DisplayName -match '2022')            { $runtimes += 'vs17' }
+    }
+    $runtimes = $runtimes | Select-Object -Unique
+
+    return [PSCustomObject]@{
+        Arch        = $arch
+        OS          = $osCaption
+        BuildNumber = $osBuild
+        Runtimes    = $runtimes
+    }
+}
+
+function Show-WindowsPhpConfig {
+    $cfg = Get-WindowsPhpConfig
+    Write-Host "  System" -ForegroundColor White
+    Write-Host "    OS      : $($cfg.OS) (build $($cfg.BuildNumber))" -ForegroundColor Gray
+    Write-Host "    Arch    : $($cfg.Arch)" -ForegroundColor Gray
+    if ($cfg.Runtimes.Count -gt 0) {
+        Write-Host "    Runtime : $($cfg.Runtimes -join ', ')" -ForegroundColor Green
+    } else {
+        Write-Host "    Runtime : None detected" -ForegroundColor Yellow
+        Write-Host "      https://aka.ms/vs/17/release/vc_redist.x64.exe" -ForegroundColor DarkGray
+    }
+}

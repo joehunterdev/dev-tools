@@ -39,41 +39,60 @@ function Show-XamppStatus {
 
 function Invoke-XamppStart {
     param([switch]$Silent)
-    $apacheStart = Join-Path $script:XamppRoot "apache_start.bat"
-    $mysqlStart  = Join-Path $script:XamppRoot "mysql_start.bat"
+    $httpd     = Join-Path $script:XamppRoot "apache\bin\httpd.exe"
+    $mysqld    = Join-Path $script:XamppRoot "mysql\bin\mysqld.exe"
+    $mysqlData = Join-Path $script:XamppRoot "mysql\data"
 
-    if (Test-Path $apacheStart) {
-        Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$apacheStart`"" -WindowStyle Hidden
-    } elseif (-not $Silent) { Write-Warning "apache_start.bat not found" }
+    # Start Apache
+    if (Test-Path $httpd) {
+        $apacheCnf = Join-Path $script:XamppRoot "apache\conf\httpd.conf"
+        Start-Process -FilePath $httpd -ArgumentList "-f `"$apacheCnf`"" -WindowStyle Hidden
+        if (-not $Silent) { Write-Info "Apache starting..." }
+    } elseif (-not $Silent) { Write-Warning2 "httpd.exe not found at $httpd" }
 
-    if (Test-Path $mysqlStart) {
-        Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$mysqlStart`"" -WindowStyle Hidden
-    } elseif (-not $Silent) { Write-Warning "mysql_start.bat not found" }
+    # Start MySQL
+    if (Test-Path $mysqld) {
+        Start-Process -FilePath $mysqld -ArgumentList "--defaults-file=`"$($script:XamppRoot)\mysql\bin\my.ini`" --standalone" -WindowStyle Hidden
+        if (-not $Silent) { Write-Info "MySQL starting..." }
+    } elseif (-not $Silent) { Write-Warning2 "mysqld.exe not found at $mysqld" }
 
-    Start-Sleep -Seconds 3
+    Start-Sleep -Seconds 4
 }
 
 function Invoke-XamppStop {
-    param([switch]$Silent)
-    $apacheStop = Join-Path $script:XamppRoot "apache_stop.bat"
-    $mysqlStop  = Join-Path $script:XamppRoot "mysql_stop.bat"
+    param([switch]$Silent, [switch]$Force)
+    $httpd       = Join-Path $script:XamppRoot "apache\bin\httpd.exe"
+    $mysqladmin  = Join-Path $script:XamppRoot "mysql\bin\mysqladmin.exe"
 
-    if (Test-Path $apacheStop) {
-        Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$apacheStop`"" -WindowStyle Hidden
-        Start-Sleep -Seconds 1
-    }
-    if (Test-Path $mysqlStop) {
-        Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$mysqlStop`"" -WindowStyle Hidden
-        Start-Sleep -Seconds 1
+    # Stop Apache gracefully via httpd -k stop
+    if (Test-Path $httpd) {
+        if (-not $Silent) { Write-Info "Stopping Apache..." }
+        & $httpd -k stop 2>&1 | Out-Null
+        Start-Sleep -Seconds 2
     }
 
-    # Fallback: force-kill if batch scripts didn't stop them
+    # Stop MySQL gracefully via mysqladmin shutdown
+    if (Test-Path $mysqladmin) {
+        if (-not $Silent) { Write-Info "Stopping MySQL..." }
+        & $mysqladmin -u root --connect-timeout=5 shutdown 2>&1 | Out-Null
+        Start-Sleep -Seconds 2
+    }
+
+    # Fallback: force-kill anything still running
     $apache = Get-Process -Name "httpd"  -ErrorAction SilentlyContinue
     $mysql  = Get-Process -Name "mysqld" -ErrorAction SilentlyContinue
-    if ($apache) { $apache | Stop-Process -Force -ErrorAction SilentlyContinue }
-    if ($mysql)  { $mysql  | Stop-Process -Force -ErrorAction SilentlyContinue }
+    if ($apache) {
+        if (-not $Silent) { Write-Warning2 "Apache still running — force stopping..." }
+        $apache | Stop-Process -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 1
+    }
+    if ($mysql) {
+        if (-not $Silent) { Write-Warning2 "MySQL still running — force stopping..." }
+        $mysql | Stop-Process -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 1
+    }
 
-    Start-Sleep -Seconds 2
+    Start-Sleep -Seconds 1
 }
 
 function Invoke-XamppRestart {

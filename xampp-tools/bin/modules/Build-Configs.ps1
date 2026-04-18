@@ -414,6 +414,39 @@ function Build-VhostsConfig {
     }
 }
 
+function Build-SystemJson {
+    param([hashtable]$EnvVars)
+
+    $sysCfg     = Get-WindowsPhpConfig
+    $phpExe     = Join-Path ($EnvVars['XAMPP_ROOT_DIR'] ?? 'C:\xampp') 'php\php.exe'
+    $phpVersion = if (Test-Path $phpExe) {
+        $v = & $phpExe -v 2>&1 | Select-Object -First 1 | Out-String
+        if ($v -match 'PHP (\d+\.\d+\.\d+)') { $matches[1] } else { 'unknown' }
+    } else { 'not found' }
+
+    $outputPath = Join-Path $script:DistDir 'system.json'
+    $outputDir  = Split-Path $outputPath -Parent
+    if (-not (Test-Path $outputDir)) { New-Item -ItemType Directory -Path $outputDir -Force | Out-Null }
+
+    $data = [ordered]@{
+        generated   = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss')
+        os          = $sysCfg.OS
+        build       = $sysCfg.BuildNumber
+        arch        = $sysCfg.Arch
+        vcRuntimes  = @($sysCfg.Runtimes)
+        php         = [ordered]@{
+            active  = $phpVersion
+            envVar  = $EnvVars['PHP_VERSION'] ?? 'not set'
+            path    = $phpExe
+        }
+        xamppRoot   = $EnvVars['XAMPP_ROOT_DIR'] ?? 'not set'
+        docRoot     = $EnvVars['XAMPP_DOCUMENT_ROOT'] ?? 'not set'
+    }
+
+    $data | ConvertTo-Json -Depth 4 | Set-Content -Path $outputPath -Encoding UTF8
+    return $outputPath
+}
+
 # ============================================================
 # MAIN
 # ============================================================
@@ -453,6 +486,8 @@ if ($script:Config.php) {
 
 Write-Host "  Templates: $($script:TemplatesDir)" -ForegroundColor Gray
 Write-Host "  Output:    $($script:DistDir)" -ForegroundColor Gray
+Write-Host ""
+Show-WindowsPhpConfig
 Write-Host ""
 
 # Check which base templates exist
@@ -618,6 +653,19 @@ if ($canBuildVhosts) {
 }
 
 Write-Host "  ─────────────────────────────────────────────────────────" -ForegroundColor DarkGray
+Write-Host ""
+
+# Always generate system.json
+Write-Host "  💻 System Info:" -ForegroundColor White
+Write-Host ""
+$sysJsonPath = Build-SystemJson -EnvVars $envData
+if (Test-Path $sysJsonPath) {
+    Write-Host "    ✅ system.json" -ForegroundColor Green
+    $built++
+} else {
+    Write-Host "    ❌ system.json" -ForegroundColor Red
+    $failed++
+}
 Write-Host ""
 
 if ($built -gt 0) {
