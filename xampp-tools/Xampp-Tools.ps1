@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     XAMPP Tools - Main Entry Point
 

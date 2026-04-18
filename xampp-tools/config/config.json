@@ -43,6 +43,12 @@
     "sitesFile": "config\\vhosts.json"
   },
 
+  "php": {
+    "description": "PHP structural paths derived from XAMPP_ROOT_DIR",
+    "curlCainfo": "{{XAMPP_ROOT_DIR}}\\php\\extras\\ssl\\cacert.pem",
+    "opensslCafile": "{{XAMPP_ROOT_DIR}}\\php\\extras\\ssl\\cacert.pem"
+  },
+
   "deployMappings": {
     "description": "Maps dist output paths to XAMPP target paths (relative to XAMPP_ROOT_DIR). Supports {{XAMPP_ROOT_DIR}} and {{XAMPP_DOCUMENT_ROOT}} placeholders.",
     "mappings": {
@@ -56,8 +62,9 @@
       "root\\info.php": "{{XAMPP_DOCUMENT_ROOT}}\\info.php",
       "hosts\\hosts": "C:\\Windows\\System32\\drivers\\etc\\hosts",
       "xampp\\xampp-control.ini": "xampp-control.ini",
-      "vscode\\themes\\joehunter-dark.json": "{{VSCODE_EXTENSIONS_DIR}}\\{{VSCODE_THEME_EXTENSION}}\\themes\\joehunter-dark.json",
-      "vscode\\package.json": "{{VSCODE_EXTENSIONS_DIR}}\\{{VSCODE_THEME_EXTENSION}}\\package.json"
+      "vscode\themes\joehunter-dark.json": "{{VSCODE_EXTENSIONS_DIR}}\\{{VSCODE_THEME_EXTENSION}}\\themes\\joehunter-dark.json",
+      "vscode\\package.json": "{{VSCODE_EXTENSIONS_DIR}}\\{{VSCODE_THEME_EXTENSION}}\\package.json",
+      "softwarepolicy\\softwarepolicy.ini": "C:\\Windows\\SoftwarePolicy\\softwarepolicy.ini"
     }
   }
 }

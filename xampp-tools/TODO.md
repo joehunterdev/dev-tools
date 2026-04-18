@@ -20,3 +20,7 @@
  - [] Custom localhost handler for callbacks from sso sites
  - [x] Add to icons, shortcuts deskop and start menu
  - [] WFC tools
+- [x] Add shell integration to VS Code https://code.visualstudio.com/docs/terminal/shell-integration — module: shell-integration
+- [] This program is blocked by group
+policy. For more information, con
+tact your system administrator.

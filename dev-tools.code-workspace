@@ -39,20 +39,19 @@
 		{
 			"name": "🔐 Software Policy",
 			"path": "../../Windows/SoftwarePolicy"
+<<<<<<< HEAD
 		},
 		{
 			"name": "📋 XAMPP Logs",
 			"path": "../../xampp/apache/logs"
 <<<<<<< Updated upstream
 =======
+=======
+>>>>>>> develop
 		},
 		{
 			"name": "📋 XAMPP Logs",
 			"path": "../../xampp/apache/logs"
-		},
-		{
-			"path": "E:/www/joehunter.es"
->>>>>>> Stashed changes
 		}
 	],
 	"settings": {

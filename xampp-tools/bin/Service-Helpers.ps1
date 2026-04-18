@@ -39,41 +39,60 @@ function Show-XamppStatus {
 
 function Invoke-XamppStart {
     param([switch]$Silent)
-    $apacheStart = Join-Path $script:XamppRoot "apache_start.bat"
-    $mysqlStart  = Join-Path $script:XamppRoot "mysql_start.bat"
+    $httpd     = Join-Path $script:XamppRoot "apache\bin\httpd.exe"
+    $mysqld    = Join-Path $script:XamppRoot "mysql\bin\mysqld.exe"
+    $mysqlData = Join-Path $script:XamppRoot "mysql\data"
 
-    if (Test-Path $apacheStart) {
-        Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$apacheStart`"" -WindowStyle Hidden
-    } elseif (-not $Silent) { Write-Warning "apache_start.bat not found" }
+    # Start Apache
+    if (Test-Path $httpd) {
+        $apacheCnf = Join-Path $script:XamppRoot "apache\conf\httpd.conf"
+        Start-Process -FilePath $httpd -ArgumentList "-f `"$apacheCnf`"" -WindowStyle Hidden
+        if (-not $Silent) { Write-Info "Apache starting..." }
+    } elseif (-not $Silent) { Write-Warning2 "httpd.exe not found at $httpd" }
 
-    if (Test-Path $mysqlStart) {
-        Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$mysqlStart`"" -WindowStyle Hidden
-    } elseif (-not $Silent) { Write-Warning "mysql_start.bat not found" }
+    # Start MySQL
+    if (Test-Path $mysqld) {
+        Start-Process -FilePath $mysqld -ArgumentList "--defaults-file=`"$($script:XamppRoot)\mysql\bin\my.ini`" --standalone" -WindowStyle Hidden
+        if (-not $Silent) { Write-Info "MySQL starting..." }
+    } elseif (-not $Silent) { Write-Warning2 "mysqld.exe not found at $mysqld" }
 
-    Start-Sleep -Seconds 3
+    Start-Sleep -Seconds 4
 }
 
 function Invoke-XamppStop {
-    param([switch]$Silent)
-    $apacheStop = Join-Path $script:XamppRoot "apache_stop.bat"
-    $mysqlStop  = Join-Path $script:XamppRoot "mysql_stop.bat"
+    param([switch]$Silent, [switch]$Force)
+    $httpd       = Join-Path $script:XamppRoot "apache\bin\httpd.exe"
+    $mysqladmin  = Join-Path $script:XamppRoot "mysql\bin\mysqladmin.exe"
 
-    if (Test-Path $apacheStop) {
-        Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$apacheStop`"" -WindowStyle Hidden
-        Start-Sleep -Seconds 1
-    }
-    if (Test-Path $mysqlStop) {
-        Start-Process -FilePath "cmd.exe" -ArgumentList "/c `"$mysqlStop`"" -WindowStyle Hidden
-        Start-Sleep -Seconds 1
+    # Stop Apache gracefully via httpd -k stop
+    if (Test-Path $httpd) {
+        if (-not $Silent) { Write-Info "Stopping Apache..." }
+        & $httpd -k stop 2>&1 | Out-Null
+        Start-Sleep -Seconds 2
     }
 
-    # Fallback: force-kill if batch scripts didn't stop them
+    # Stop MySQL gracefully via mysqladmin shutdown
+    if (Test-Path $mysqladmin) {
+        if (-not $Silent) { Write-Info "Stopping MySQL..." }
+        & $mysqladmin -u root --connect-timeout=5 shutdown 2>&1 | Out-Null
+        Start-Sleep -Seconds 2
+    }
+
+    # Fallback: force-kill anything still running
     $apache = Get-Process -Name "httpd"  -ErrorAction SilentlyContinue
     $mysql  = Get-Process -Name "mysqld" -ErrorAction SilentlyContinue
-    if ($apache) { $apache | Stop-Process -Force -ErrorAction SilentlyContinue }
-    if ($mysql)  { $mysql  | Stop-Process -Force -ErrorAction SilentlyContinue }
+    if ($apache) {
+        if (-not $Silent) { Write-Warning2 "Apache still running — force stopping..." }
+        $apache | Stop-Process -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 1
+    }
+    if ($mysql) {
+        if (-not $Silent) { Write-Warning2 "MySQL still running — force stopping..." }
+        $mysql | Stop-Process -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds 1
+    }
 
-    Start-Sleep -Seconds 2
+    Start-Sleep -Seconds 1
 }
 
 function Invoke-XamppRestart {
@@ -143,22 +162,144 @@ function Test-ApacheConfigSyntax {
     }
 }
 
+function Open-XamppControlPanel {
+    <# Opens XAMPP Control Panel GUI if not already running #>
+    $already = Get-Process -Name "xampp-control" -ErrorAction SilentlyContinue
+    if ($already) { return }
+    $control = Join-Path $script:XamppRoot "xampp-control.exe"
+    if (Test-Path $control) {
+        Start-Process -FilePath $control
+        Start-Sleep -Seconds 2
+        Write-Info "XAMPP Control Panel opened"
+    }
+}
+
+function Invoke-EnsureSSLCerts {
+    <#
+    Reads vhosts.json, generates any missing certs with OpenSSL,
+    auto-imports to Windows trust store (Chrome/Edge) and Firefox.
+    Silent — no prompts. Safe to call from any pipeline step.
+    #>
+    $_shConfig = Load-FilesConfig $_shModuleRoot
+    if (-not $_shConfig) { return }
+
+    $vhostsFile = Join-Path $_shModuleRoot $_shConfig.vhosts.sitesFile
+    if (-not (Test-Path $vhostsFile)) { return }
+
+    $_shEnvLocal = Load-EnvFile (Join-Path $_shModuleRoot ".env")
+    $domainExt  = if ($_shEnvLocal['VHOSTS_EXTENSION']) { $_shEnvLocal['VHOSTS_EXTENSION'] } else { ".localhost" }
+    $sslCrtDir  = Join-Path $script:XamppRoot "apache\conf\ssl.crt"
+    $sslKeyDir  = Join-Path $script:XamppRoot "apache\conf\ssl.key"
+    $opensslExe = Join-Path $script:XamppRoot "apache\bin\openssl.exe"
+    $opensslCnf = Join-Path $script:XamppRoot "apache\conf\openssl.cnf"
+
+    if (-not (Test-Path $opensslExe)) { return }
+
+    $vhostsData = Get-Content $vhostsFile -Raw | ConvertFrom-Json
+    $sites      = if ($vhostsData.vhosts) { $vhostsData.vhosts } else { @() }
+    $sslSites   = $sites | Where-Object { $_.ssl -eq $true }
+    if (-not $sslSites) { return }
+
+    $missing = @()
+    foreach ($site in $sslSites) {
+        $base   = $site.folder -replace '\.[^.]+$', ''
+        $domain = if ($site.domain) { $site.domain } elseif ($site.serverName) { $site.serverName } else { "$base$domainExt" }
+        $crt    = Join-Path $sslCrtDir "$domain-selfsigned.crt"
+        if (-not (Test-Path $crt)) { $missing += $domain }
+    }
+
+    if ($missing.Count -eq 0) { return }
+
+    Write-Info "Generating $($missing.Count) missing SSL cert(s)..."
+
+    if (-not (Test-Path $sslCrtDir)) { New-Item -ItemType Directory -Path $sslCrtDir -Force | Out-Null }
+    if (-not (Test-Path $sslKeyDir)) { New-Item -ItemType Directory -Path $sslKeyDir -Force | Out-Null }
+
+    $env:OPENSSL_CONF = $opensslCnf
+
+    foreach ($domain in $missing) {
+        $crt = Join-Path $sslCrtDir "$domain-selfsigned.crt"
+        $key = Join-Path $sslKeyDir "$domain-selfsigned.key"
+        $san = "subjectAltName=DNS:$domain,DNS:*.$domain"
+        $subj = "/CN=$domain/O=Local Dev/C=GB"
+
+        $out = & $opensslExe req -x509 -nodes -days 3650 -newkey rsa:2048 `
+            -keyout $key -out $crt `
+            -subj $subj -addext $san 2>&1
+
+        if (Test-Path $crt) {
+            Write-Success "  Cert: $domain"
+
+            # ── Windows trust store (Chrome / Edge) ──────────────────
+            try {
+                $x509  = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($crt)
+                $store = New-Object System.Security.Cryptography.X509Certificates.X509Store("Root", "CurrentUser")
+                $store.Open("ReadWrite")
+                $store.Add($x509)
+                $store.Close()
+                Write-Info "  Trusted: Windows store (Chrome/Edge)"
+            } catch {
+                Write-Warning2 "  Windows trust failed: $($_.Exception.Message)"
+            }
+
+            # ── Firefox (NSS certutil) ────────────────────────────────
+            $certutil = Get-Command certutil.exe -ErrorAction SilentlyContinue
+            $ffProfiles = Get-ChildItem "$env:APPDATA\Mozilla\Firefox\Profiles" -ErrorAction SilentlyContinue
+            if ($certutil -and $ffProfiles) {
+                foreach ($profile in $ffProfiles) {
+                    $db = Join-Path $profile.FullName "cert9.db"
+                    if (Test-Path $db) {
+                        & certutil.exe -A -n $domain -t "CT,," -i $crt -d "sql:$($profile.FullName)" 2>&1 | Out-Null
+                        Write-Info "  Trusted: Firefox ($($profile.Name))"
+                    }
+                }
+            }
+        } else {
+            Write-Warning2 "  Cert generation failed: $domain"
+        }
+    }
+}
+
 function Invoke-PostDeployRestart {
-    <# Config test → optional restart. Returns $true if all OK. #>
+    <# Config test → show XAMPP GUI → stop → restart. Returns $true if all OK. #>
     Write-Info "Testing Apache config syntax..."
     $test = Test-ApacheConfigSyntax
-    if ($test.Success) {
-        Write-Success "Apache config syntax OK"
-        if (Prompt-YesNo "  Restart services now?") {
-            Write-Info "Restarting..."
-            Invoke-XamppRestart
-            Show-XamppStatus
-            Write-Success "Services restarted"
-        }
-        return $true
-    } else {
+    if (-not $test.Success) {
         Write-Error2 "Apache config test FAILED — services NOT restarted"
         Write-Host "    $($test.Output)" -ForegroundColor Red
         return $false
     }
+
+    Write-Success "Apache config syntax OK"
+
+    # Open XAMPP Control Panel so user can see what's happening
+    Open-XamppControlPanel
+
+    # Check what's currently running
+    $status = Get-XamppStatus
+    Show-XamppStatus
+
+    $anyRunning = $status.Apache -or $status.MySQL
+
+    if ($anyRunning) {
+        if (Prompt-YesNo "  Stop running services, then restart?") {
+            Write-Info "Stopping services..."
+            Invoke-XamppStop
+            Start-Sleep -Seconds 1
+            Show-XamppStatus
+
+            Write-Info "Starting services..."
+            Invoke-XamppStart
+            Show-XamppStatus
+            Write-Success "Services restarted"
+        }
+    } else {
+        if (Prompt-YesNo "  Start services now?") {
+            Write-Info "Starting services..."
+            Invoke-XamppStart
+            Show-XamppStatus
+            Write-Success "Services started"
+        }
+    }
+    return $true
 }
