@@ -157,25 +157,28 @@ function Run-DeployVHosts {
 
 function Run-RestartServers {
     Write-Host ""
-    Write-Host "  ⚡ Step 5/5: Restarting servers..." -ForegroundColor Cyan
+    Write-Host "  ⚡ Step 5/5: Config test & restart..." -ForegroundColor Cyan
     Write-Host "  ─────────────────────────────────────────────────────────" -ForegroundColor DarkGray
     Write-Host ""
     
-    $servicesScript = Join-Path $script:ModulesDir "Services.ps1"
-    if (-not (Test-Path $servicesScript)) {
-        return @{ Success = $false; Error = "Services.ps1 not found" }
+    . (Join-Path $moduleRoot "bin\Service-Helpers.ps1")
+    
+    # Safety: test Apache config before restarting
+    Write-Info "Testing Apache config syntax..."
+    $test = Test-ApacheConfigSyntax
+    
+    if (-not $test.Success) {
+        Write-Error2 "Apache config test FAILED — aborting restart"
+        Write-Host "    $($test.Output)" -ForegroundColor Red
+        return @{ Success = $false; Error = "Config syntax error" }
     }
     
-    try {
-        # Services script handles its own restart logic
-        # We just need to invoke it - it will show its own output
-        $output = & $servicesScript 2>&1
-        
-        Write-Host "  ✅ Servers restarted" -ForegroundColor Green
-        return @{ Success = $true }
-    } catch {
-        return @{ Success = $false; Error = $_.Exception.Message }
-    }
+    Write-Success "Config syntax OK"
+    Write-Info "Restarting services..."
+    Invoke-XamppRestart
+    Show-XamppStatus
+    Write-Success "Services restarted"
+    return @{ Success = $true }
 }
 
 # ============================================================

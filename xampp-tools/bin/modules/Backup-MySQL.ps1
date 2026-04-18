@@ -50,6 +50,13 @@ if (-not (Test-Path $mysql)) {
     return
 }
 
+# Pre-flight: ensure MySQL is running
+. (Join-Path $moduleRoot "bin\Service-Helpers.ps1")
+if (-not (Assert-MySQLRunning)) {
+    Write-Error2 "Cannot backup without MySQL running"
+    return
+}
+
 # Check password is set
 if ([string]::IsNullOrEmpty($mysqlPass)) {
     Write-Error2 "MYSQL_ROOT_PASSWORD not set in .env"

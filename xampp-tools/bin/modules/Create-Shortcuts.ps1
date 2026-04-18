@@ -34,6 +34,7 @@ $script:AppName     = "XAMPP Tools"
 
 $script:DesktopPath   = [Environment]::GetFolderPath("Desktop")
 $script:StartMenuPath = Join-Path ([Environment]::GetFolderPath("Programs")) "XAMPP Tools"
+$script:TaskbarPath   = Join-Path $env:APPDATA "Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBar"
 
 # ============================================================
 # FUNCTIONS
@@ -75,14 +76,50 @@ function New-XamppShortcut {
     return (Join-Path $TargetPath $LinkName)
 }
 
+function Pin-ToTaskbar {
+    # Create a temp shortcut then use Shell verb to pin it
+    $tempLnk = Join-Path $env:TEMP "$script:AppName.lnk"
+    
+    # First create the shortcut in temp
+    $psExe     = Get-PowerShellExe
+    $arguments = "-NoExit -ExecutionPolicy Bypass -File `"$script:ToolsEntry`""
+    $wsh       = New-Object -ComObject WScript.Shell
+    $shortcut  = $wsh.CreateShortcut($tempLnk)
+    $shortcut.TargetPath       = $psExe
+    $shortcut.Arguments        = $arguments
+    $shortcut.WorkingDirectory = $moduleRoot
+    $shortcut.Description      = "XAMPP Tools - Dev environment manager"
+    if (Test-Path $script:IconIco) {
+        $shortcut.IconLocation = $script:IconIco
+    } elseif (Test-Path $script:IconPng) {
+        $shortcut.IconLocation = $script:IconPng
+    } else {
+        $shortcut.IconLocation = "$psExe,0"
+    }
+    $shortcut.Save()
+    
+    # Copy to taskbar pinned folder
+    if (Test-Path $script:TaskbarPath) {
+        Copy-Item $tempLnk (Join-Path $script:TaskbarPath "$script:AppName.lnk") -Force
+        Remove-Item $tempLnk -Force -ErrorAction SilentlyContinue
+        return $true
+    } else {
+        Remove-Item $tempLnk -Force -ErrorAction SilentlyContinue
+        return $false
+    }
+}
+
 function Show-ShortcutStatus {
     $desktopLink   = Join-Path $script:DesktopPath   "$script:AppName.lnk"
     $startMenuLink = Join-Path $script:StartMenuPath "$script:AppName.lnk"
 
     Write-Host ""
     Write-Host "  Current Status:" -ForegroundColor White
+    $taskbarLink  = Join-Path $script:TaskbarPath "$script:AppName.lnk"
+
     Write-Host "    Desktop   : $(if (Test-Path $desktopLink)   { '✅ Exists' } else { '⚫ Not created' })" -ForegroundColor Gray
     Write-Host "    Start Menu: $(if (Test-Path $startMenuLink) { '✅ Exists' } else { '⚫ Not created' })" -ForegroundColor Gray
+    Write-Host "    Taskbar   : $(if (Test-Path $taskbarLink)   { '✅ Exists' } else { '⚫ Not created' })" -ForegroundColor Gray
     Write-Host ""
 }
 
@@ -98,8 +135,9 @@ Show-ShortcutStatus
 
 Write-Host "    1) Create Desktop shortcut" -ForegroundColor Gray
 Write-Host "    2) Create Start Menu shortcut" -ForegroundColor Gray
-Write-Host "    3) Create Both" -ForegroundColor Gray
-Write-Host "    4) Remove All Shortcuts" -ForegroundColor Gray
+Write-Host "    3) Pin to Taskbar" -ForegroundColor Gray
+Write-Host "    4) Create All (Desktop + Start Menu + Taskbar)" -ForegroundColor Gray
+Write-Host "    5) Remove All Shortcuts" -ForegroundColor Gray
 Write-Host ""
 Write-Host "    0) Back" -ForegroundColor Gray
 Write-Host ""
@@ -127,6 +165,18 @@ switch ($choice) {
         }
     }
     '3' {
+        try {
+            if (Pin-ToTaskbar) {
+                Write-Success "Taskbar shortcut created"
+                Write-Info "You may need to sign out/in or restart Explorer for it to appear"
+            } else {
+                Write-Error2 "Taskbar pin folder not found"
+            }
+        } catch {
+            Write-Error2 "Failed: $($_.Exception.Message)"
+        }
+    }
+    '4' {
         $errors = 0
         try {
             $d = New-XamppShortcut -TargetPath $script:DesktopPath
@@ -145,14 +195,26 @@ switch ($choice) {
             Write-Error2 "Start Menu failed: $($_.Exception.Message)"
             $errors++
         }
+        try {
+            if (Pin-ToTaskbar) {
+                Write-Success "Taskbar   : pinned"
+            } else {
+                Write-Error2 "Taskbar pin folder not found"
+                $errors++
+            }
+        } catch {
+            Write-Error2 "Taskbar failed: $($_.Exception.Message)"
+            $errors++
+        }
         if ($errors -eq 0) {
             Write-Host ""
             Write-Info "All shortcuts created successfully"
         }
     }
-    '4' {
+    '5' {
         $desktopLink   = Join-Path $script:DesktopPath   "$script:AppName.lnk"
         $startMenuLink = Join-Path $script:StartMenuPath "$script:AppName.lnk"
+        $taskbarLink   = Join-Path $script:TaskbarPath   "$script:AppName.lnk"
         $removed = 0
 
         if (Test-Path $desktopLink) {
@@ -163,6 +225,11 @@ switch ($choice) {
         if (Test-Path $startMenuLink) {
             Remove-Item $startMenuLink -Force
             Write-Success "Start Menu shortcut removed"
+            $removed++
+        }
+        if (Test-Path $taskbarLink) {
+            Remove-Item $taskbarLink -Force
+            Write-Success "Taskbar shortcut removed"
             $removed++
         }
         if ($removed -eq 0) {

@@ -151,6 +151,7 @@ if ($failed -gt 0) {
     Write-Warning2 "$failed config(s) failed"
 }
 
-Write-Host ""
-Write-Host "  Restart Apache/MySQL to apply changes" -ForegroundColor DarkGray
+# Post-deploy: config test + optional restart
+. (Join-Path $moduleRoot "bin\Service-Helpers.ps1")
+Invoke-PostDeployRestart
 Write-Host ""
