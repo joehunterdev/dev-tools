@@ -1,4 +1,4 @@
-# Name: Build Configs
+﻿# Name: Build Configs
 # Description: Build all configs from templates
 # Cmd: build-configs
 # Order: 5

@@ -1,4 +1,4 @@
-# Name: Backup Configs
+﻿# Name: Backup Configs
 # Description: Backup XAMPP config files
 # Icon: 💾
 # Cmd: backup-configs

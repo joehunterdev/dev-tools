@@ -1,4 +1,4 @@
-# Name: Firewall
+﻿# Name: Firewall
 # Description: Manage Windows Firewall rules for XAMPP
 # Icon: 🛡️
 # Cmd: firewall

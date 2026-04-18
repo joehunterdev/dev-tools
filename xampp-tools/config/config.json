@@ -29,7 +29,9 @@
       { "template": "hosts\\hosts.template", "output": "hosts\\hosts", "type": "hosts" },
       { "template": "root\\index.php", "output": "root\\index.php" },
       { "template": "root\\info.php", "output": "root\\info.php" },
-      { "template": "xampp\\xampp-control.ini.template", "output": "xampp\\xampp-control.ini" }
+      { "template": "xampp\\xampp-control.ini.template", "output": "xampp\\xampp-control.ini" },
+      { "template": "vscode\\themes\\joehunter-dark.json", "output": "vscode\\themes\\joehunter-dark.json" },
+      { "template": "vscode\\package.json", "output": "vscode\\package.json" }
     ]
   },
 
@@ -53,7 +55,9 @@
       "root\\index.php": "{{XAMPP_DOCUMENT_ROOT}}\\index.php",
       "root\\info.php": "{{XAMPP_DOCUMENT_ROOT}}\\info.php",
       "hosts\\hosts": "C:\\Windows\\System32\\drivers\\etc\\hosts",
-      "xampp\\xampp-control.ini": "xampp-control.ini"
+      "xampp\\xampp-control.ini": "xampp-control.ini",
+      "vscode\\themes\\joehunter-dark.json": "{{VSCODE_EXTENSIONS_DIR}}\\{{VSCODE_THEME_EXTENSION}}\\themes\\joehunter-dark.json",
+      "vscode\\package.json": "{{VSCODE_EXTENSIONS_DIR}}\\{{VSCODE_THEME_EXTENSION}}\\package.json"
     }
   }
 }

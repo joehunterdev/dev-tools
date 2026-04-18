@@ -1,4 +1,4 @@
-# Name: MySQL Setup
+﻿# Name: MySQL Setup
 # Description: Configure MySQL root & pma users from .env
 # Icon: 🔐
 # Cmd: setup-mysql

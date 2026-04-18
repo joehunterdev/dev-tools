@@ -26,6 +26,13 @@ C:\Program Files\nodejs\npx.cmd=1
 ; ✅ Allow Visual Studio Code and Terminal
 C:\Users\*\AppData\Local\Programs\Microsoft VS Code=1
 C:\Users\*\AppData\Local\Programs\Microsoft VS Code\resources\app\node_modules\node-pty\build\Release\winpty-agent.exe=1
+C:\Users\{{USERNAME}}\AppData\Local\Programs\Microsoft VS Code\resources\app\node_modules\node-pty\build\Release\winpty-agent.exe=1
+C:\Users\{{USERNAME}}\AppData\Local\Programs\Microsoft VS Code\resources\app\node_modules\node-pty\build\Release=1
+; UNC extended-length prefix variants (node-pty uses \\?\ prefix at launch)
+\\?\c:\Users\{{USERNAME}}\AppData\Local\Programs\Microsoft VS Code\resources\app\node_modules\node-pty\build\Release\winpty-agent.exe=1
+\\?\c:\Users\{{USERNAME}}\AppData\Local\Programs\Microsoft VS Code\resources\app\node_modules\node-pty\build\Release=1
+\\?\c:\Users\*\AppData\Local\Programs\Microsoft VS Code\resources\app\node_modules\node-pty\build\Release\winpty-agent.exe=1
+\\?\c:\Users\*\AppData\Local\Programs\Microsoft VS Code\resources\app\node_modules\node-pty\build\Release\*=1
 
 ; ✅ Allow XAMPP (Apache, MySQL, PHP)
 {{XAMPP_PATHS}}

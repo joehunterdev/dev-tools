@@ -12,7 +12,7 @@
 			"name": "⚙️ Apache VHosts",
 			"path": "../../xampp/apache/conf/extra"
 		},
- 		{
+		{
 			"name": "💾 MySQL Data",
 			"path": "../../xampp/mysql/data"
 		},
@@ -43,8 +43,17 @@
 		{
 			"name": "📋 XAMPP Logs",
 			"path": "../../xampp/apache/logs"
+<<<<<<< Updated upstream
+=======
+		},
+		{
+			"name": "📋 XAMPP Logs",
+			"path": "../../xampp/apache/logs"
+		},
+		{
+			"path": "E:/www/joehunter.es"
+>>>>>>> Stashed changes
 		}
-		
 	],
 	"settings": {
 		"workbench.startupEditor": "none",
@@ -53,6 +62,11 @@
 			"hosts": "plaintext"
 		},
 		"powershell.codeFormatting.preset": "OTBS",
+		"terminal.integrated.shellIntegration.enabled": true,
+		"terminal.integrated.shellIntegration.showCommandGuide": true,
+		"terminal.integrated.shellIntegration.decorationsEnabled": "both",
+		"terminal.integrated.shellIntegration.history": 100,
+		"terminal.integrated.cwd": "E:\\www",
 		"files.exclude": {
 			"../../**": true
 		}

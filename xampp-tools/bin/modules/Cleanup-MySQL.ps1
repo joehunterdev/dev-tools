@@ -1,4 +1,4 @@
-# Name: Cleanup Orphaned
+﻿# Name: Cleanup Orphaned
 # Description: Remove a specific orphaned database folder
 # Icon: 🧹
 # Cmd: cleanup-orphaned

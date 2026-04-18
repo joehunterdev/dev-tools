@@ -1,4 +1,4 @@
-# Name: Restore MySQL
+﻿# Name: Restore MySQL
 # Description: Restore a database from backup
 # Icon: 📥
 # Cmd: restore-mysql

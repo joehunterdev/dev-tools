@@ -1,4 +1,4 @@
-# Name: Create Database
+﻿# Name: Create Database
 # Description: Quickly create a new MySQL database with utf8mb4_general_ci
 # Icon: 🗄️
 # Cmd: create-db

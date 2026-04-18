@@ -1,4 +1,4 @@
-# Name: Create Alias
+﻿# Name: Create Alias
 # Description: Create command aliases (find & replace)
 # Icon: 🔗
 # Cmd: alias

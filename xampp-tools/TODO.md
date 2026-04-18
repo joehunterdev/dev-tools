@@ -16,3 +16,5 @@
  - [] restart xampp using its app path
 -  [] Build and test config for wp
  - [] Secure install and rotate credentials
+ - []  � lets remove these unicode wierd vars
+ - [] Custom localhost handler for callbacks from sso sites

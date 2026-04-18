@@ -1,4 +1,4 @@
-# Name: Deploy VHosts
+﻿# Name: Deploy VHosts
 # Description: Build & deploy virtual hosts + hosts file
 # Icon: 🌐
 # Cmd: deploy-vhosts

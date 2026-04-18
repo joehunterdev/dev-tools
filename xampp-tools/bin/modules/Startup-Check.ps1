@@ -1,4 +1,4 @@
-# Name: Startup Check
+﻿# Name: Startup Check
 # Description: Verify environment
 # Icon: 🔍
 # Cmd: check
