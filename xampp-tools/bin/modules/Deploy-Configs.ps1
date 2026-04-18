@@ -153,5 +153,5 @@ if ($failed -gt 0) {
 
 # Post-deploy: config test + optional restart
 . (Join-Path $moduleRoot "bin\Service-Helpers.ps1")
-Invoke-PostDeployRestart
+Invoke-PostDeployRestart | Out-Null
 Write-Host ""

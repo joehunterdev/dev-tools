@@ -147,18 +147,41 @@ function Invoke-PostDeployRestart {
     <# Config test → optional restart. Returns $true if all OK. #>
     Write-Info "Testing Apache config syntax..."
     $test = Test-ApacheConfigSyntax
-    if ($test.Success) {
-        Write-Success "Apache config syntax OK"
-        if (Prompt-YesNo "  Restart services now?") {
-            Write-Info "Restarting..."
-            Invoke-XamppRestart
-            Show-XamppStatus
-            Write-Success "Services restarted"
-        }
-        return $true
-    } else {
-        Write-Error2 "Apache config test FAILED — services NOT restarted"
+    if (-not $test.Success) {
+        Write-Error2 "Apache config test FAILED \u2014 services NOT restarted"
         Write-Host "    $($test.Output)" -ForegroundColor Red
         return $false
     }
+
+    Write-Success "Apache config syntax OK"
+
+    # Check what's currently running
+    $status = Get-XamppStatus
+    $anyRunning = $status.Apache -or $status.MySQL
+
+    if ($anyRunning) {
+        Show-XamppStatus
+        if (Prompt-YesNo "  Restart running services?") {
+            Write-Info "Restarting..."
+            if ($status.Apache) {
+                Invoke-XamppStop -Silent
+            }
+            if ($status.MySQL) {
+                Invoke-XamppStop -Silent
+            }
+            Start-Sleep -Seconds 1
+            Invoke-XamppStart -Silent
+            Show-XamppStatus
+            Write-Success "Services restarted"
+        }
+    } else {
+        Write-Info "No services currently running"
+        if (Prompt-YesNo "  Start services now?") {
+            Write-Info "Starting..."
+            Invoke-XamppStart -Silent
+            Show-XamppStatus
+            Write-Success "Services started"
+        }
+    }
+    return $true
 }
