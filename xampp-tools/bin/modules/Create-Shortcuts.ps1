@@ -28,7 +28,7 @@ $moduleRoot = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent
 
 $script:ToolsEntry  = Join-Path $moduleRoot "Xampp-Tools.ps1"
 $script:AssetsDir   = Join-Path $moduleRoot "bin\assets"
-$script:IconIco     = Join-Path $moduleRoot "bin\assets\logo.ico"
+$script:IconIco     = Join-Path $moduleRoot "bin\assets\logo-lg.ico"
 $script:IconPng     = Join-Path $moduleRoot "bin\assets\logo.png"
 $script:AppName     = "XAMPP Tools"
 
@@ -45,6 +45,14 @@ function Get-PowerShellExe {
     $pwsh = Get-Command "pwsh.exe" -ErrorAction SilentlyContinue
     if ($pwsh) { return $pwsh.Source }
     return "C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"
+}
+
+function Set-RunAsAdmin {
+    param([string]$LnkPath)
+    # Byte 21 (0x15) bit 0x20 = "Run as administrator"
+    $bytes = [System.IO.File]::ReadAllBytes($LnkPath)
+    $bytes[0x15] = $bytes[0x15] -bor 0x20
+    [System.IO.File]::WriteAllBytes($LnkPath, $bytes)
 }
 
 function New-XamppShortcut {
@@ -73,14 +81,19 @@ function New-XamppShortcut {
     }
 
     $shortcut.Save()
-    return (Join-Path $TargetPath $LinkName)
+
+    $lnkFullPath = Join-Path $TargetPath $LinkName
+    Set-RunAsAdmin -LnkPath $lnkFullPath
+
+    return $lnkFullPath
 }
 
 function Pin-ToTaskbar {
-    # Create a temp shortcut then use Shell verb to pin it
-    $tempLnk = Join-Path $env:TEMP "$script:AppName.lnk"
-    
-    # First create the shortcut in temp
+    # Create shortcut in a known folder so Shell.Application can find it
+    $tempDir = Join-Path $env:TEMP "XamppToolsPin"
+    if (-not (Test-Path $tempDir)) { New-Item -ItemType Directory -Path $tempDir -Force | Out-Null }
+    $tempLnk = Join-Path $tempDir "$script:AppName.lnk"
+
     $psExe     = Get-PowerShellExe
     $arguments = "-NoExit -ExecutionPolicy Bypass -File `"$script:ToolsEntry`""
     $wsh       = New-Object -ComObject WScript.Shell
@@ -97,16 +110,31 @@ function Pin-ToTaskbar {
         $shortcut.IconLocation = "$psExe,0"
     }
     $shortcut.Save()
-    
-    # Copy to taskbar pinned folder
-    if (Test-Path $script:TaskbarPath) {
-        Copy-Item $tempLnk (Join-Path $script:TaskbarPath "$script:AppName.lnk") -Force
-        Remove-Item $tempLnk -Force -ErrorAction SilentlyContinue
-        return $true
-    } else {
-        Remove-Item $tempLnk -Force -ErrorAction SilentlyContinue
-        return $false
+    Set-RunAsAdmin -LnkPath $tempLnk
+
+    # Use Shell.Application verb to pin (works on Windows 10 / early Win11)
+    $shell  = New-Object -ComObject Shell.Application
+    $folder = $shell.Namespace($tempDir)
+    $item   = $folder.ParseName("$script:AppName.lnk")
+    $verb   = $item.Verbs() | Where-Object { $_.Name -match 'taskbar|Task(&B)ar' -or $_.Name -eq 'Pin to tas&kbar' }
+
+    if ($verb) {
+        $verb.DoIt()
+        Start-Sleep -Milliseconds 500
+        Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+        return 'pinned'
     }
+
+    # Fallback for Win11 22H2+ — verb removed, copy to Quick Launch instead
+    $quickLaunch = Join-Path $env:APPDATA "Microsoft\Internet Explorer\Quick Launch"
+    if (Test-Path $quickLaunch) {
+        Copy-Item $tempLnk (Join-Path $quickLaunch "$script:AppName.lnk") -Force
+        Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+        return 'quicklaunch'
+    }
+
+    Remove-Item $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+    return $false
 }
 
 function Show-ShortcutStatus {
@@ -166,11 +194,13 @@ switch ($choice) {
     }
     '3' {
         try {
-            if (Pin-ToTaskbar) {
-                Write-Success "Taskbar shortcut created"
-                Write-Info "You may need to sign out/in or restart Explorer for it to appear"
+            $result = Pin-ToTaskbar
+            if ($result -eq 'pinned') {
+                Write-Success "Pinned to taskbar"
+            } elseif ($result -eq 'quicklaunch') {
+                Write-Success "Added to Quick Launch (Win11 — right-click taskbar to pin)"
             } else {
-                Write-Error2 "Taskbar pin folder not found"
+                Write-Error2 "Could not pin to taskbar"
             }
         } catch {
             Write-Error2 "Failed: $($_.Exception.Message)"
@@ -196,10 +226,13 @@ switch ($choice) {
             $errors++
         }
         try {
-            if (Pin-ToTaskbar) {
+            $result = Pin-ToTaskbar
+            if ($result -eq 'pinned') {
                 Write-Success "Taskbar   : pinned"
+            } elseif ($result -eq 'quicklaunch') {
+                Write-Success "Taskbar   : added to Quick Launch"
             } else {
-                Write-Error2 "Taskbar pin folder not found"
+                Write-Error2 "Taskbar   : could not pin"
                 $errors++
             }
         } catch {
