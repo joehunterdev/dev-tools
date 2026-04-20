@@ -173,17 +173,16 @@ try {
 }
 
 # ── Step 6: Reload SRP ────────────────────────────────────────
+# NOTE: We use cmd.exe to kill + relaunch softwarepolicy.exe *after a delay*
+# so the currently running pwsh session is not killed by the new policy mid-script.
 if (Test-Path $srpExe) {
-    Write-Host "    [..] Reloading SRP via softwarepolicy.exe" -ForegroundColor DarkGray
-    $srpRunning = @(Get-Process -Name "softwarepolicy" -ErrorAction SilentlyContinue)
-    if ($srpRunning.Count -gt 0) {
-        Write-Host "    [..] Stopping $($srpRunning.Count) existing softwarepolicy.exe instance(s)" -ForegroundColor DarkGray
-        $srpRunning | Stop-Process -Force -ErrorAction SilentlyContinue
-        Start-Sleep -Milliseconds 500
-    }
-    # Relaunch fire-and-forget — softwarepolicy.exe is a tray app, not a one-shot process
-    Start-Process -FilePath $srpExe -ArgumentList "/s" -WindowStyle Hidden
-    Write-Host "    [OK] SRP reloaded" -ForegroundColor Green
+    Write-Host "    [..] Scheduling SRP reload via cmd (deferred — avoids killing this session)" -ForegroundColor DarkGray
+    $killCmd  = "taskkill /F /IM softwarepolicy.exe >nul 2>&1"
+    $waitCmd  = "timeout /t 2 /nobreak >nul"
+    $startCmd = "start `"`" `"$srpExe`" /s"
+    $fullCmd  = "$killCmd & $waitCmd & $startCmd"
+    Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $fullCmd -WindowStyle Hidden
+    Write-Host "    [OK] SRP reload scheduled (will apply in ~2s)" -ForegroundColor Green
 } else {
     Write-Warning2 "softwarepolicy.exe not found — reload manually"
 }

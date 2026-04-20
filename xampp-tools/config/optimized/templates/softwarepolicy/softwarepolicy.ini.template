@@ -39,6 +39,21 @@ C:\Users\{{USERNAME}}\AppData\Local\Programs\Microsoft VS Code\resources\app\nod
 \\?\c:\Users\*\AppData\Local\Programs\Microsoft VS Code\resources\app\node_modules\node-pty\build\Release\winpty-agent.exe=1
 \\?\c:\Users\*\AppData\Local\Programs\Microsoft VS Code\resources\app\node_modules\node-pty\build\Release\*=1
 
+; ✅ Allow VS Code extensions (PowerShell extension, language servers, etc.)
+C:\Users\{{USERNAME}}\.vscode\extensions=1
+C:\Users\{{USERNAME}}\.vscode\extensions\*=1
+C:\Users\*\.vscode\extensions=1
+C:\Users\*\.vscode\extensions\*=1
+; PowerShell extension — PSES host and modules
+C:\Users\{{USERNAME}}\.vscode\extensions\ms-vscode.powershell-*\modules\PowerShellEditorServices\PowerShellEditorServices.psd1=1
+C:\Users\{{USERNAME}}\.vscode\extensions\ms-vscode.powershell-*\modules=1
+C:\Users\{{USERNAME}}\.vscode\extensions\ms-vscode.powershell-*=1
+; Language server executables inside extensions (e.g. OmniSharp, ESLint server, etc.)
+C:\Users\{{USERNAME}}\.vscode\extensions\*\node_modules=1
+C:\Users\{{USERNAME}}\.vscode\extensions\*\node_modules\*=1
+C:\Users\*\.vscode\extensions\ms-vscode.powershell-*=1
+C:\Users\*\.vscode\extensions\ms-vscode.powershell-*\modules=1
+
 ; ✅ Allow XAMPP (Apache, MySQL, PHP)
 {{XAMPP_PATHS}}
 
