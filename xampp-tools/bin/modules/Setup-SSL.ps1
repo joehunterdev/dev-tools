@@ -161,6 +161,57 @@ function Import-CertificateToStore {
     }
 }
 
+function Repair-ServerCert {
+    <#
+    .SYNOPSIS
+        Regenerate the main Apache server.crt/server.key if the key is too small (< 2048 bit).
+        OpenSSL 3.x rejects keys smaller than 2048 bit, preventing Apache from starting.
+    #>
+    $crtFile = Join-Path $script:SSLCrtDir "server.crt"
+    $keyFile = Join-Path $script:SSLKeyDir "server.key"
+
+    # Check current key size
+    $keyBits = 0
+    if (Test-Path $crtFile) {
+        $info = & $script:OpenSSL x509 -in $crtFile -noout -text 2>&1 | Out-String
+        if ($info -match 'Public-Key:\s*\((\d+)\s*bit\)') {
+            $keyBits = [int]$matches[1]
+        }
+    }
+
+    if ($keyBits -ge 2048) {
+        return @{ Skipped = $true; KeyBits = $keyBits }
+    }
+
+    Write-Host "    [!!] server.crt has $keyBits-bit key — regenerating with 4096-bit (OpenSSL 3 minimum is 2048)" -ForegroundColor Yellow
+
+    # Back up old files
+    $ts = Get-Date -Format 'yyyyMMdd_HHmmss'
+    if (Test-Path $crtFile) { Copy-Item $crtFile "$crtFile.bak.$ts" -Force }
+    if (Test-Path $keyFile) { Copy-Item $keyFile "$keyFile.bak.$ts" -Force }
+
+    $subject = "/C=GB/ST=Local/L=Development/O=XAMPP-Local/CN=localhost"
+    $san     = "subjectAltName=DNS:localhost,IP:127.0.0.1"
+
+    $genArgs = @(
+        "req", "-x509", "-nodes",
+        "-days", "3650",
+        "-newkey", "rsa:4096",
+        "-keyout", $keyFile,
+        "-out",    $crtFile,
+        "-subj",   $subject,
+        "-addext", $san
+    )
+    if (Test-Path $script:OpenSSLConf) { $genArgs += @("-config", $script:OpenSSLConf) }
+
+    $out = & $script:OpenSSL $genArgs 2>&1
+    if (Test-Path $crtFile) {
+        return @{ Success = $true; KeyBits = 4096 }
+    } else {
+        return @{ Success = $false; Error = ($out | Out-String).Trim() }
+    }
+}
+
 # ============================================================
 # MAIN
 # ============================================================
@@ -181,6 +232,19 @@ if (-not $opensslCheck.Valid) {
 }
 
 Write-Success "OpenSSL found: $($opensslCheck.Path)"
+Write-Host ""
+
+# ── Ensure main server.crt meets OpenSSL 3 minimum key size ──
+Write-Host "  Checking main server.crt key size..." -ForegroundColor White
+$serverCertCheck = Repair-ServerCert
+if ($serverCertCheck.Skipped) {
+    Write-Host "    [OK] server.crt is $($serverCertCheck.KeyBits)-bit — no action needed" -ForegroundColor DarkGray
+} elseif ($serverCertCheck.Success) {
+    Write-Host "    [OK] server.crt regenerated as 4096-bit (10-year expiry)" -ForegroundColor Green
+    Write-Host "    [..] Restart Apache for the new cert to take effect" -ForegroundColor DarkGray
+} else {
+    Write-Host "    [!!] Could not regenerate server.crt: $($serverCertCheck.Error)" -ForegroundColor Red
+}
 Write-Host ""
 
 # Load vhosts

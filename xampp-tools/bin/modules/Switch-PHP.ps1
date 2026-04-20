@@ -701,17 +701,43 @@ function Switch-ActivePhp {
         return $false
     }
 
-    # ── Step 6: Patch httpd-xampp.conf ────────────────────────
+    # ── Step 6: Sync OpenSSL DLLs → Apache bin ───────────────
+    # PHP ships its own libssl/libcrypto. If they're newer than Apache's copies,
+    # Apache will load its stale version first, then php_curl.dll fails with
+    # "entry point SSL_get0_group_name not found". Keep them in sync.
+    Show-Step "6" "Syncing OpenSSL DLLs (PHP → Apache bin)" "current"
+    $phpDir     = $script:XamppRoot | Join-Path -ChildPath "php"
+    $apacheBin  = $script:XamppRoot | Join-Path -ChildPath "apache\bin"
+    $sslDlls    = @("libssl-3-x64.dll", "libcrypto-3-x64.dll")
+    $syncOk     = $true
+    foreach ($dll in $sslDlls) {
+        $src = Join-Path $phpDir $dll
+        $dst = Join-Path $apacheBin $dll
+        if (Test-Path $src) {
+            try {
+                Copy-Item $src $dst -Force
+                Write-Host "    [OK] $dll synced" -ForegroundColor DarkGray
+            } catch {
+                Write-Host "    [!!] Could not copy $dll`: $($_.Exception.Message)" -ForegroundColor Yellow
+                $syncOk = $false
+            }
+        } else {
+            Write-Host "    [--] $dll not found in PHP dir — skipping" -ForegroundColor DarkGray
+        }
+    }
+    if ($syncOk) { Show-Step "6" "OpenSSL DLLs synced" "done" } else { Show-Step "6" "OpenSSL sync partial — check manually" "error" }
+
+    # ── Step 7: Patch httpd-xampp.conf ────────────────────────
     Patch-ApachePhpConfig -NewVersion $Version | Out-Null
 
-    # ── Step 7: Migrate php.ini ───────────────────────────────
+    # ── Step 8: Migrate php.ini ───────────────────────────────
     Migrate-PhpIni -NewVersion $Version -BackupDir $backupDir
 
-    # ── Step 8: Validate Apache config before starting ────────
-    Show-Step "8" "Testing Apache config syntax" "current"
+    # ── Step 9: Validate Apache config before starting ────────
+    Show-Step "9" "Testing Apache config syntax" "current"
     $test = Test-ApacheConfigSyntax
     if (-not $test.Success) {
-        Show-Step "8" "Apache config FAILED — rolling back" "error"
+        Show-Step "9" "Apache config FAILED — rolling back" "error"
         Write-Host "    $($test.Output)" -ForegroundColor Red
         Restore-PhpBackup -BackupDir $backupDir -OldVersion $currentShort
         Invoke-XamppStart
