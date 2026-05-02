@@ -462,7 +462,7 @@ extension=mysqli
 ;extension=oci8_12c  ; Use with Oracle Database 12c Instant Client
 ;extension=oci8_19  ; Use with Oracle Database 19 Instant Client
 ;extension=odbc
-;extension=openssl
+extension=openssl
 ;extension=pdo_firebird
 extension=pdo_mysql
 ;extension=pdo_oci
@@ -1437,3 +1437,21 @@ mssql.min_error_severity=10
 mssql.min_message_severity=10
 mssql.compatability_mode=Off
 mssql.secure_connection=Off
+
+; ── Xdebug ───────────────────────────────────────────────────
+; Install: https://xdebug.org/wizard (paste phpinfo output)
+; Or drop php_xdebug.dll into C:\xampp\php\ext\
+;
+; Uncomment the block below to enable step debugging.
+; Leave commented out in production or if xdebug is not installed.
+;
+;zend_extension=xdebug
+;
+;[xdebug]
+;xdebug.mode=debug
+;xdebug.start_with_request=yes
+;xdebug.client_host=127.0.0.1
+;xdebug.client_port=9003
+;xdebug.log="C:\xampp\php\logs\xdebug.log"
+;xdebug.log_level=3
+;xdebug.idekey=VSCODE
