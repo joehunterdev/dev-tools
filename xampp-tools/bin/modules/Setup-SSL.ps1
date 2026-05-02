@@ -161,6 +161,96 @@ function Import-CertificateToStore {
     }
 }
 
+function Repair-ServerCert {
+    <#
+    .SYNOPSIS
+        Regenerate the main Apache server.crt/server.key if the key is too small (< 2048 bit).
+        OpenSSL 3.x rejects keys smaller than 2048 bit, preventing Apache from starting.
+    #>
+    $crtFile = Join-Path $script:SSLCrtDir "server.crt"
+    $keyFile = Join-Path $script:SSLKeyDir "server.key"
+
+    # Check current key size
+    $keyBits = 0
+    if (Test-Path $crtFile) {
+        $info = & $script:OpenSSL x509 -in $crtFile -noout -text 2>&1 | Out-String
+        if ($info -match 'Public-Key:\s*\((\d+)\s*bit\)') {
+            $keyBits = [int]$matches[1]
+        }
+    }
+
+    if ($keyBits -ge 2048) {
+        return @{ Skipped = $true; KeyBits = $keyBits }
+    }
+
+    Write-Host "    [!!] server.crt has $keyBits-bit key — regenerating with 4096-bit (OpenSSL 3 minimum is 2048)" -ForegroundColor Yellow
+
+    # Back up old files
+    $ts = Get-Date -Format 'yyyyMMdd_HHmmss'
+    if (Test-Path $crtFile) { Copy-Item $crtFile "$crtFile.bak.$ts" -Force }
+    if (Test-Path $keyFile) { Copy-Item $keyFile "$keyFile.bak.$ts" -Force }
+
+    $subject = "/C=GB/ST=Local/L=Development/O=XAMPP-Local/CN=localhost"
+    $san     = "subjectAltName=DNS:localhost,IP:127.0.0.1"
+
+    $genArgs = @(
+        "req", "-x509", "-nodes",
+        "-days", "3650",
+        "-newkey", "rsa:4096",
+        "-keyout", $keyFile,
+        "-out",    $crtFile,
+        "-subj",   $subject,
+        "-addext", $san
+    )
+    if (Test-Path $script:OpenSSLConf) { $genArgs += @("-config", $script:OpenSSLConf) }
+
+    $out = & $script:OpenSSL $genArgs 2>&1
+    if (Test-Path $crtFile) {
+        return @{ Success = $true; KeyBits = 4096 }
+    } else {
+        return @{ Success = $false; Error = ($out | Out-String).Trim() }
+    }
+}
+
+function Repair-CaCert {
+    <#
+    .SYNOPSIS
+        Ensure cacert.pem exists in C:\xampp\php\extras\ssl\.
+        Downloads the Mozilla CA bundle from curl.se if missing or older than 90 days.
+    #>
+    param(
+        [string]$XamppRoot = 'C:\xampp'
+    )
+
+    $sslDir  = Join-Path $XamppRoot 'php\extras\ssl'
+    $caFile  = Join-Path $sslDir 'cacert.pem'
+    $url     = 'https://curl.se/ca/cacert.pem'
+
+    # Create directory if needed
+    if (-not (Test-Path $sslDir)) {
+        New-Item -ItemType Directory -Path $sslDir -Force | Out-Null
+    }
+
+    # Check if file exists and is fresh (< 90 days old)
+    if (Test-Path $caFile) {
+        $ageDays = ((Get-Date) - (Get-Item $caFile).LastWriteTime).TotalDays
+        if ($ageDays -lt 90) {
+            return @{ Skipped = $true; Path = $caFile; AgeDays = [int]$ageDays }
+        }
+        # Stale — re-download
+        $stale = $true
+    } else {
+        $stale = $false
+    }
+
+    try {
+        Invoke-WebRequest -Uri $url -OutFile $caFile -UseBasicParsing -ErrorAction Stop
+        return @{ Success = $true; Path = $caFile; Stale = $stale }
+    } catch {
+        return @{ Success = $false; Error = $_.Exception.Message; Path = $caFile }
+    }
+}
+
 # ============================================================
 # MAIN
 # ============================================================
@@ -181,6 +271,34 @@ if (-not $opensslCheck.Valid) {
 }
 
 Write-Success "OpenSSL found: $($opensslCheck.Path)"
+Write-Host ""
+
+# ── Ensure main server.crt meets OpenSSL 3 minimum key size ──
+Write-Host "  Checking main server.crt key size..." -ForegroundColor White
+$serverCertCheck = Repair-ServerCert
+if ($serverCertCheck.Skipped) {
+    Write-Host "    [OK] server.crt is $($serverCertCheck.KeyBits)-bit — no action needed" -ForegroundColor DarkGray
+} elseif ($serverCertCheck.Success) {
+    Write-Host "    [OK] server.crt regenerated as 4096-bit (10-year expiry)" -ForegroundColor Green
+    Write-Host "    [..] Restart Apache for the new cert to take effect" -ForegroundColor DarkGray
+} else {
+    Write-Host "    [!!] Could not regenerate server.crt: $($serverCertCheck.Error)" -ForegroundColor Red
+}
+Write-Host ""
+
+# ── Ensure cacert.pem (Mozilla CA bundle) is present ──────────
+Write-Host "  Checking CA certificate bundle (cacert.pem)..." -ForegroundColor White
+$caCheck = Repair-CaCert -XamppRoot $xamppRoot
+if ($caCheck.Skipped) {
+    Write-Host "    [OK] cacert.pem present ($($caCheck.AgeDays) days old)" -ForegroundColor DarkGray
+} elseif ($caCheck.Success) {
+    $action = if ($caCheck.Stale) { 'refreshed' } else { 'downloaded' }
+    Write-Host "    [OK] cacert.pem $action → $($caCheck.Path)" -ForegroundColor Green
+} else {
+    Write-Host "    [!!] Could not download cacert.pem: $($caCheck.Error)" -ForegroundColor Red
+    Write-Host "    [..] Download manually from https://curl.se/ca/cacert.pem" -ForegroundColor DarkGray
+    Write-Host "         and save to: $($caCheck.Path)" -ForegroundColor DarkGray
+}
 Write-Host ""
 
 # Load vhosts

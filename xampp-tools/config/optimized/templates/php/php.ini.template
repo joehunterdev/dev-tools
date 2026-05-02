@@ -462,7 +462,7 @@ extension=mysqli
 ;extension=oci8_12c  ; Use with Oracle Database 12c Instant Client
 ;extension=oci8_19  ; Use with Oracle Database 19 Instant Client
 ;extension=odbc
-;extension=openssl
+extension=openssl
 ;extension=pdo_firebird
 extension=pdo_mysql
 ;extension=pdo_oci
@@ -484,7 +484,9 @@ extension=pdo_sqlite
 ;extension=xsl
 extension=zip
 
-zend_extension=opcache
+; zend_extension=opcache
+; NOTE: On PHP 8.4+ opcache is statically compiled — do not load via zend_extension.
+; On PHP 7.4-8.3 this is handled by Repair-PhpIni using php_opcache.dll.
 
 ;;;;;;;;;;;;;;;;;;;
 ; OPcache Settings (Development Optimized)
@@ -506,30 +508,12 @@ opcache.validate_timestamps=1
 ; Save comments for frameworks that need them
 opcache.save_comments=1
 
-; Performance optimizations
-opcache.fast_shutdown=1
+; Performance (fast_shutdown removed in PHP 8.0)
 opcache.optimization_level=0x7FFEBFFF
 
-;;;;;;;;;;;;;;;;;;;
-; Module Settings ;
-;;;;;;;;;;;;;;;;;;;
-asp_tags=Off
-display_startup_errors=On
-track_errors=Off
-y2k_compliance=On
-allow_call_time_pass_reference=Off
-safe_mode=Off
-safe_mode_gid=Off
-safe_mode_allowed_env_vars=PHP_
-safe_mode_protected_env_vars=LD_LIBRARY_PATH
+; Error log
 error_log="{{XAMPP_ROOT_DIR}}\php\logs\php_error_log"
-register_globals=Off
-register_long_arrays=Off
-magic_quotes_gpc=Off
-magic_quotes_runtime=Off
-magic_quotes_sybase=Off
-extension=php_openssl.dll
-extension=php_ftp.dll
+display_startup_errors=On
 
 [CLI Server]
 ; Whether the CLI web server uses ANSI color coding in its terminal output.
@@ -886,7 +870,8 @@ bcmath.scale=0
 
 [browscap]
 ; https://php.net/browscap
-browscap="{{XAMPP_ROOT_DIR}}\php\extras\browscap.ini"
+; browscap.ini is not included in standard XAMPP — download from https://browscap.org/ if needed
+;browscap="{{XAMPP_ROOT_DIR}}\php\extras\browscap.ini"
 
 [Session]
 ; Handler used to store/retrieve data.
@@ -1452,3 +1437,21 @@ mssql.min_error_severity=10
 mssql.min_message_severity=10
 mssql.compatability_mode=Off
 mssql.secure_connection=Off
+
+; ── Xdebug ───────────────────────────────────────────────────
+; Install: https://xdebug.org/wizard (paste phpinfo output)
+; Or drop php_xdebug.dll into C:\xampp\php\ext\
+;
+; Uncomment the block below to enable step debugging.
+; Leave commented out in production or if xdebug is not installed.
+;
+;zend_extension=xdebug
+;
+;[xdebug]
+;xdebug.mode=debug
+;xdebug.start_with_request=yes
+;xdebug.client_host=127.0.0.1
+;xdebug.client_port=9003
+;xdebug.log="C:\xampp\php\logs\xdebug.log"
+;xdebug.log_level=3
+;xdebug.idekey=VSCODE

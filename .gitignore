@@ -2,6 +2,14 @@
 .env
 *.local
 
+# Private docs / personal files
+.docs/
+**/*.code-search
+**/private/
+**/*.png
+**/*.jpg
+**/*.jpeg
+
 # Private local-only folders
 .private/
 **/.private/
