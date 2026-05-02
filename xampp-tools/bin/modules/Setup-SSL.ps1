@@ -212,6 +212,45 @@ function Repair-ServerCert {
     }
 }
 
+function Repair-CaCert {
+    <#
+    .SYNOPSIS
+        Ensure cacert.pem exists in C:\xampp\php\extras\ssl\.
+        Downloads the Mozilla CA bundle from curl.se if missing or older than 90 days.
+    #>
+    param(
+        [string]$XamppRoot = 'C:\xampp'
+    )
+
+    $sslDir  = Join-Path $XamppRoot 'php\extras\ssl'
+    $caFile  = Join-Path $sslDir 'cacert.pem'
+    $url     = 'https://curl.se/ca/cacert.pem'
+
+    # Create directory if needed
+    if (-not (Test-Path $sslDir)) {
+        New-Item -ItemType Directory -Path $sslDir -Force | Out-Null
+    }
+
+    # Check if file exists and is fresh (< 90 days old)
+    if (Test-Path $caFile) {
+        $ageDays = ((Get-Date) - (Get-Item $caFile).LastWriteTime).TotalDays
+        if ($ageDays -lt 90) {
+            return @{ Skipped = $true; Path = $caFile; AgeDays = [int]$ageDays }
+        }
+        # Stale — re-download
+        $stale = $true
+    } else {
+        $stale = $false
+    }
+
+    try {
+        Invoke-WebRequest -Uri $url -OutFile $caFile -UseBasicParsing -ErrorAction Stop
+        return @{ Success = $true; Path = $caFile; Stale = $stale }
+    } catch {
+        return @{ Success = $false; Error = $_.Exception.Message; Path = $caFile }
+    }
+}
+
 # ============================================================
 # MAIN
 # ============================================================
@@ -244,6 +283,21 @@ if ($serverCertCheck.Skipped) {
     Write-Host "    [..] Restart Apache for the new cert to take effect" -ForegroundColor DarkGray
 } else {
     Write-Host "    [!!] Could not regenerate server.crt: $($serverCertCheck.Error)" -ForegroundColor Red
+}
+Write-Host ""
+
+# ── Ensure cacert.pem (Mozilla CA bundle) is present ──────────
+Write-Host "  Checking CA certificate bundle (cacert.pem)..." -ForegroundColor White
+$caCheck = Repair-CaCert -XamppRoot $xamppRoot
+if ($caCheck.Skipped) {
+    Write-Host "    [OK] cacert.pem present ($($caCheck.AgeDays) days old)" -ForegroundColor DarkGray
+} elseif ($caCheck.Success) {
+    $action = if ($caCheck.Stale) { 'refreshed' } else { 'downloaded' }
+    Write-Host "    [OK] cacert.pem $action → $($caCheck.Path)" -ForegroundColor Green
+} else {
+    Write-Host "    [!!] Could not download cacert.pem: $($caCheck.Error)" -ForegroundColor Red
+    Write-Host "    [..] Download manually from https://curl.se/ca/cacert.pem" -ForegroundColor DarkGray
+    Write-Host "         and save to: $($caCheck.Path)" -ForegroundColor DarkGray
 }
 Write-Host ""
 

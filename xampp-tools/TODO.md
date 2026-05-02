@@ -24,3 +24,4 @@
 - [] This program is blocked by group
 policy. For more information, con
 tact your system administrator.
+- [] Install postgres

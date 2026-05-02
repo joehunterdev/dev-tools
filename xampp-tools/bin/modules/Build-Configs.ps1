@@ -418,7 +418,8 @@ function Build-SystemJson {
     param([hashtable]$EnvVars)
 
     $sysCfg     = Get-WindowsPhpConfig
-    $phpExe     = Join-Path ($EnvVars['XAMPP_ROOT_DIR'] ?? 'C:\xampp') 'php\php.exe'
+    $xamppRoot  = if ($EnvVars['XAMPP_ROOT_DIR']) { $EnvVars['XAMPP_ROOT_DIR'] } else { 'C:\xampp' }
+    $phpExe     = Join-Path $xamppRoot 'php\php.exe'
     $phpVersion = if (Test-Path $phpExe) {
         $v = & $phpExe -v 2>&1 | Select-Object -First 1 | Out-String
         if ($v -match 'PHP (\d+\.\d+\.\d+)') { $matches[1] } else { 'unknown' }
@@ -436,11 +437,11 @@ function Build-SystemJson {
         vcRuntimes  = @($sysCfg.Runtimes)
         php         = [ordered]@{
             active  = $phpVersion
-            envVar  = $EnvVars['PHP_VERSION'] ?? 'not set'
+            envVar  = if ($EnvVars['PHP_VERSION']) { $EnvVars['PHP_VERSION'] } else { 'not set' }
             path    = $phpExe
         }
-        xamppRoot   = $EnvVars['XAMPP_ROOT_DIR'] ?? 'not set'
-        docRoot     = $EnvVars['XAMPP_DOCUMENT_ROOT'] ?? 'not set'
+        xamppRoot   = if ($EnvVars['XAMPP_ROOT_DIR']) { $EnvVars['XAMPP_ROOT_DIR'] } else { 'not set' }
+        docRoot     = if ($EnvVars['XAMPP_DOCUMENT_ROOT']) { $EnvVars['XAMPP_DOCUMENT_ROOT'] } else { 'not set' }
     }
 
     $data | ConvertTo-Json -Depth 4 | Set-Content -Path $outputPath -Encoding UTF8
